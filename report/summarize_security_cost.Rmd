@@ -1,0 +1,1788 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# initialize --------------------------------------------------------------
+library(BlockChain)
+library(magrittr)
+library(foreach)
+library(modelsummary)
+library(ggplot2)
+library(viridis)
+library(knitr)
+library(kableExtra)
+library(stringr)
+options(dplyr.summarise.inform = FALSE)
+```
+
+## Read data
+
+```{r}
+# read asic machine specification data
+asic_spec_top <- readRDS(file = here::here("output/asic_spec_top.rds"))
+```
+
+```{r}
+# read data for BTC ---------------------------------------------------------------
+savename_list_btc <-
+  list.files(
+    path = "../output",
+    pattern = "epoch_currency_btc_halving",
+    full.names = TRUE
+  )
+
+savename_list_btc <- 
+    savename_list_btc[
+    grep(
+      "96",
+      savename_list_btc,
+      invert = TRUE
+      )
+    ]
+
+epoch_currency_simulated_btc <-
+  savename_list_btc %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc %>%
+      gsub("../output/epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+```
+
+```{r}
+# read data for BCH---------------------------------------------------------------
+savename_list_bch <-
+  list.files(
+    path = "../output",
+    pattern = "epoch_currency_bch_halving",
+    full.names = TRUE
+  )
+
+savename_list_bch <- 
+    savename_list_bch[
+    grep(
+      "96",
+      savename_list_bch,
+      invert = TRUE
+      )
+    ]
+
+epoch_currency_simulated_bch <-
+  savename_list_bch %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bch %>%
+      gsub("../output/epoch_currency_bch_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+```
+
+```{r}
+# read data for BSV ---------------------------------------------------------------
+savename_list_bsv <-
+  list.files(
+    path = "../output",
+    pattern = "epoch_currency_bsv_halving",
+    full.names = TRUE
+  )
+
+savename_list_bsv <- 
+    savename_list_bsv[
+    grep(
+      "96",
+      savename_list_bsv,
+      invert = TRUE
+      )
+    ]
+
+epoch_currency_simulated_bsv <-
+  savename_list_bsv %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bsv %>%
+      gsub("../output/epoch_currency_bsv_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+```
+
+
+```{r}
+# read 96 paths data for BTC ------------------------------------------------------
+savename_list_btc_96 <-
+  list.files(
+    path = "../output/10_1_simulate_reduced_btc_halving",
+    pattern = "epoch_currency_btc_halving",
+    full.names = TRUE
+  )
+
+epoch_currency_simulated_btc_96 <-
+  savename_list_btc_96 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_96 %>%
+      gsub("../output/.*epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows() %>% 
+  dplyr::select(setting, currency, simulated, generated, blockheight, datetime, epoch_time, hash_rate, trial) %>% 
+  dplyr::mutate(trial = as.integer(trial))
+
+```
+
+
+```{r}
+# read 96 paths data for BCH ------------------------------------------------------
+savename_list_bch_96 <-
+  list.files(
+    path = "../output/10_2_simulate_reduced_bch_halving",
+    pattern = "epoch_currency_bch_halving",
+    full.names = TRUE
+  )
+
+epoch_currency_simulated_bch_96 <-
+  savename_list_bch_96 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bch_96 %>%
+      gsub("../output/.*epoch_currency_bch_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows() %>% 
+  dplyr::select(setting, currency, simulated, generated, blockheight, datetime, epoch_time, hash_rate, trial) %>% 
+  dplyr::mutate(trial = as.integer(trial))
+
+```
+
+```{r}
+# read 96 paths data for BSV ------------------------------------------------------
+savename_list_bsv_96 <-
+  list.files(
+    path = "../output/10_3_simulate_reduced_bsv_halving",
+    pattern = "epoch_currency_bsv_halving",
+    full.names = TRUE
+  )
+
+epoch_currency_simulated_bsv_96 <-
+  savename_list_bsv_96 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bsv_96 %>%
+      gsub("../output/.*epoch_currency_bsv_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows() %>% 
+  dplyr::select(setting, currency, simulated, generated, blockheight, datetime, epoch_time, hash_rate, trial) %>% 
+  dplyr::mutate(trial = as.integer(trial))
+```
+
+
+
+## Set constant
+
+```{r}
+electricity_cost <- 0.04 / (1000 * 3600)
+model_representative <- "Bitmain Antminer S3"
+
+colour_palette <- 
+  c(
+    "BTC" = "#F7931A",
+    "BCH" = "#0AC18E",
+    "BSV" = "#00368C"
+  )
+```
+
+
+## Senario profile
+
+```{r}
+
+daa_actual <- 
+  data.frame(
+    BTC = "Original", 
+    BCH = "CW-144", 
+    BSV = "CW-144",
+    setting = "actual"
+    )
+
+daa_bch_uses_btc_daa <- 
+  data.frame(
+    BTC = "Original",
+    BCH = "Original",
+    BSV = "CW-144",
+    setting = "original_original_cw144"
+    )
+
+daa_all_use_btc_daa <- 
+  data.frame(
+    BTC = "Original",
+    BCH = "Original",
+    BSV = "Original",
+    setting = "original_original_original"
+    )
+  
+daa_bch_uses_asert_daa <- 
+  data.frame(
+    BTC = "Original", 
+    BCH = "ASERT",
+    BSV = "CW-144",
+    setting = "original_asert_cw144"
+    )
+
+daa_bch_bsv_use_asert_daa <-
+  data.frame(
+    BTC = "Original", 
+    BCH = "ASERT",
+    BSV = "ASERT",
+    setting = "original_asert_asert"
+    )
+
+daa_all_use_asert_daa <- 
+  data.frame(
+    BTC = "ASERT",
+    BCH = "ASERT",
+    BSV = "ASERT",
+    setting = "asert_asert_asert"
+    )
+  
+daa_btc_uses_bch_daa <- 
+  data.frame(
+    BTC = "CW-144",
+    BCH = "CW-144",
+    BSV = "CW-144",
+    setting = "cw144_cw144_cw144"
+    )
+
+daa_btc_uses_bch_daa_bch_bsv_use_asert_daa <-
+  data.frame(
+    BTC = "CW-144",
+    BCH = "ASERT",
+    BSV = "ASERT",
+    setting = "cw144_asert_asert"
+  )
+
+daa_btc_bch_use_asert_daa <- 
+  data.frame(
+    BTC = "ASERT",
+    BCH = "ASERT",
+    BSV = "CW-144",
+    setting = "asert_asert_cw144"
+    )
+
+profile <- 
+  dplyr::bind_rows(
+    list(
+      daa_actual,
+      daa_bch_uses_btc_daa,
+      daa_all_use_btc_daa,
+      daa_bch_uses_asert_daa,
+      daa_bch_bsv_use_asert_daa,
+      daa_all_use_asert_daa,
+      daa_btc_uses_bch_daa,
+      daa_btc_uses_bch_daa_bch_bsv_use_asert_daa,
+      daa_btc_bch_use_asert_daa
+      )
+    )
+
+kable(profile)
+```
+
+## Transform data
+
+```{r}
+spec_representative <-
+  asic_spec_top %>%
+  dplyr::filter(algo == "sha256") %>%
+  dplyr::filter(
+    release >= "2018-07-01",
+    release <= "2020-06-30"
+  )  %>%
+  dplyr::mutate(efficiency = power / hash_rate_spec) %>%
+  dplyr::summarise(efficiency = mean(efficiency))
+```
+
+
+# Security cost {.tabset}
+
+## Security cost one path {.tabset}
+
+### BTC
+
+```{r}
+base <- "BTC"
+cutoff <- 630000
+threshold <- 0.05
+epoch_currency_simulated <- epoch_currency_simulated_btc
+security_btc <- 
+  calculate_spec(
+    epoch_currency_simulated,
+    profile,
+    basecutoff,
+    threshold,
+    spec_representative
+  ) 
+security_btc %>%
+  kbl(
+  ) %>%
+  kable_styling()
+```
+
+
+```{r}
+security_btc %>%
+  dplyr::filter(
+    setting == "actual" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "original_asert_asert" |
+      setting == "asert_asert_asert" |
+      setting == "cw144_cw144_cw144" |
+      setting == "cw144_asert_asert" |
+      setting == "asert_asert_cw144" 
+  ) %>%
+  dplyr::mutate(currency = factor(currency, levels = c("BTC", "BCH", "BSV"))) %>%
+  ggplot(
+    aes(
+      x = setting,
+      y = SpEC,
+      fill = currency
+    )
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+    ) +
+  labs(
+    x = "Setting",
+    y = "Attack cost per operation cost"
+  ) +
+  scale_fill_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  ) +
+  theme(axis.text.x = element_text(angle=60, vjust=1, hjust=1))
+  
+```
+
+### BCH
+
+```{r}
+base <- "BCH"
+cutoff <- 630000
+threshold <- 0.05
+epoch_currency_simulated <- epoch_currency_simulated_bch
+security_bch <- 
+  calculate_spec(
+    epoch_currency_simulated,
+    profile,
+    basecutoff,
+    threshold,
+    spec_representative
+  ) 
+security_bch %>%
+  kbl(
+  ) %>%
+  kable_styling()
+```
+
+```{r}
+security_bch %>%
+  dplyr::filter(
+    setting == "actual" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "original_asert_asert" |
+      setting == "asert_asert_asert" |
+      setting == "cw144_cw144_cw144" |
+      setting == "cw144_asert_asert" |
+      setting == "asert_asert_cw144" 
+  ) %>%
+  dplyr::mutate(currency = factor(currency, levels = c("BTC", "BCH", "BSV"))) %>%
+  ggplot(
+    aes(
+      x = setting,
+      y = SpEC,
+      fill = currency
+    )
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+    ) +
+  labs(
+    x = "Setting",
+    y = "Attack cost per operation cost"
+  ) +
+  scale_fill_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  ) +
+  theme(axis.text.x = element_text(angle=60, vjust=1, hjust=1))
+  
+```
+
+
+### BSV
+
+```{r}
+base <- "BSV"
+cutoff <- 630000
+threshold <- 0.05
+epoch_currency_simulated <- epoch_currency_simulated_bsv
+security_bsv <- 
+  calculate_spec(
+    epoch_currency_simulated,
+    profile,
+    basecutoff,
+    threshold,
+    spec_representative
+  ) 
+security_bsv %>%
+  kbl(
+  ) %>%
+  kable_styling()
+```
+
+```{r}
+security_bsv %>%
+  dplyr::filter(
+    setting == "actual" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "original_asert_asert" |
+      setting == "asert_asert_asert" |
+      setting == "cw144_cw144_cw144" |
+      setting == "cw144_asert_asert" |
+      setting == "asert_asert_cw144" 
+  ) %>%
+  dplyr::mutate(currency = factor(currency, levels = c("BTC", "BCH", "BSV"))) %>%
+  ggplot(
+    aes(
+      x = setting,
+      y = SpEC,
+      fill = currency
+    )
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+    ) +
+  labs(
+    x = "Setting",
+    y = "Attack cost per operation cost"
+  ) +
+  scale_fill_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  ) +
+  theme(axis.text.x = element_text(angle=60, vjust=1, hjust=1))
+  
+```
+
+
+## Security cost 96 paths {.tabset}
+
+### BTC
+
+
+```{r}
+base <- "BTC"
+cutoff <- 630000
+threshold <- 0.05
+epoch_currency_simulated <- 
+  epoch_currency_simulated_btc_96 %>%
+  dplyr::group_split(trial)
+
+security_btc <-
+  purrr::map(
+    epoch_currency_simulated,
+    ~ calculate_spec(
+      .,
+      profile,
+      basecutoff,
+      threshold,
+      spec_representative
+    ) 
+  )
+
+security_btc <-
+  security_btc %>%
+  dplyr::bind_rows() %>%
+  dplyr::group_by(setting, currency) %>%
+  dplyr::summarise(
+    dplyr::across(
+      c(operation_electricity, attack_electricity, operation_electricity_saving),
+      mean
+    )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    SpEC = attack_electricity / operation_electricity
+  ) %>%
+  dplyr::left_join(
+    profile,
+    by = "setting"
+    ) %>%
+  dplyr::select(setting, BTC, BCH, BSV, currency, dplyr::everything())
+  
+security_btc %>%
+  kbl(
+  ) %>%
+  kable_styling()
+```
+
+```{r}
+
+level_order <- c(
+  "1. actual",
+  "2. cw144_cw144_cw144",
+  "3. original_original_cw144",
+  "4. original_original_original",
+  "5. original_asert_cw144",
+  "asert_asert_asert",
+  "asert_asert_cw144",
+  "cw144_asert_asert",
+  "original_asert_asert"
+  ) 
+
+SpEC_btc <-
+  security_btc %>%
+  dplyr::filter(
+    setting == "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "original_asert_asert" |
+      setting == "asert_asert_asert" |
+      setting == "cw144_asert_asert" |
+      setting == "asert_asert_cw144" 
+  ) %>%
+  dplyr::mutate(currency = factor(currency, levels = c("BTC", "BCH", "BSV")),
+                setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "1. actual"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "2. cw144_cw144_cw144"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "3. original_original_cw144"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "4. original_original_original"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern="original_asert_cw14",
+      replacement = "5. original_asert_cw14"
+      ),
+    TRUE ~ setting
+    )
+    ) %>%
+  ggplot(
+    aes(
+      x = factor(setting, level = level_order),
+      y = SpEC,
+      fill = currency
+    )
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+    ) +
+  labs(
+    y = "SpEC"
+  ) +
+  scale_fill_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    axis.title.x = element_blank(),
+    legend.title=element_blank()
+  ) +
+  theme(axis.text.x = element_text(angle=60, vjust=1, hjust=1))
+
+legend <- ggpubr::get_legend(SpEC_btc)
+SpEC_btc_legend <- ggpubr::as_ggplot(legend)
+        
+SpEC_btc <-
+  SpEC_btc +
+          theme(
+            legend.position = "none"
+          )
+
+plot(SpEC_btc)
+  
+```
+
+### BCH
+
+```{r}
+base <- "BCH"
+cutoff <- 630000
+threshold <- 0.05
+epoch_currency_simulated <- 
+  epoch_currency_simulated_bch_96 %>%
+  dplyr::group_split(trial)
+
+security_bch <-
+  purrr::map(
+    epoch_currency_simulated,
+    ~ calculate_spec(
+      .,
+      profile,
+      basecutoff,
+      threshold,
+      spec_representative
+    ) 
+  )
+
+security_bch <-
+  security_bch %>%
+  dplyr::bind_rows() %>%
+  dplyr::group_by(setting, currency) %>%
+  dplyr::summarise(
+    dplyr::across(
+      c(operation_electricity, attack_electricity, operation_electricity_saving),
+      mean
+    )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    SpEC = attack_electricity / operation_electricity
+  ) %>%
+  dplyr::left_join(
+    profile,
+    by = "setting"
+    ) %>%
+  dplyr::select(setting, BTC, BCH, BSV, currency, dplyr::everything())
+  
+security_bch %>%
+  kbl(
+  ) %>%
+  kable_styling()
+```
+
+```{r}
+level_order <- c(
+  "actual",
+  "cw144_cw144_cw144",
+  "original_original_cw144",
+  "original_original_original",
+  "original_asert_cw144",
+  "original_asert_asert",
+  "asert_asert_asert",
+  "cw144_asert_asert",
+  "asert_asert_cw144"
+  ) 
+
+SpEC_bch <-
+  security_bch %>%
+  dplyr::filter(
+    setting == "actual" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "original_asert_asert" |
+      setting == "asert_asert_asert" |
+      setting == "cw144_cw144_cw144" |
+      setting == "cw144_asert_asert" |
+      setting == "asert_asert_cw144" 
+  ) %>%
+  dplyr::mutate(currency = factor(currency, levels = c("BTC", "BCH", "BSV"))) %>%
+  ggplot(
+    aes(
+      x = factor(setting, level = level_order),
+      y = SpEC,
+      fill = currency
+    )
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+    ) +
+  labs(
+    x = "Setting",
+    y = "Attack cost per operation cost"
+  ) +
+  scale_fill_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    axis.title.x = element_blank(),
+    legend.title=element_blank()
+  ) +
+  theme(axis.text.x = element_text(angle=60, vjust=1, hjust=1))
+
+legend <- ggpubr::get_legend(SpEC_bch)
+SpEC_bch_legend <- ggpubr::as_ggplot(legend)
+        
+SpEC_bch <-
+  SpEC_bch +
+          theme(
+            legend.position = "none"
+          )
+
+plot(SpEC_bch)
+  
+```
+
+
+### BSV
+
+```{r}
+base <- "BSV"
+cutoff <- 630000
+threshold <- 0.05
+epoch_currency_simulated <- 
+  epoch_currency_simulated_bsv_96 %>%
+  dplyr::group_split(trial)
+
+security_bsv <-
+  purrr::map(
+    epoch_currency_simulated,
+    ~ calculate_spec(
+      .,
+      profile,
+      basecutoff,
+      threshold,
+      spec_representative
+    ) 
+  )
+
+security_bsv <-
+  security_bsv %>%
+  dplyr::bind_rows() %>%
+  dplyr::group_by(setting, currency) %>%
+  dplyr::summarise(
+    dplyr::across(
+      c(operation_electricity, attack_electricity, operation_electricity_saving),
+      mean
+    )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    SpEC = attack_electricity / operation_electricity
+  ) %>%
+  dplyr::left_join(
+    profile,
+    by = "setting"
+    ) %>%
+  dplyr::select(setting, BTC, BCH, BSV, currency, dplyr::everything())
+  
+security_bsv %>%
+  kbl(
+  ) %>%
+  kable_styling()
+```
+
+```{r}
+level_order <- c(
+  "actual",
+  "cw144_cw144_cw144",
+  "original_original_cw144",
+  "original_original_original",
+  "original_asert_cw144",
+  "original_asert_asert",
+  "asert_asert_asert",
+  "cw144_asert_asert",
+  "asert_asert_cw144"
+  ) 
+
+SpEC_bsv <-
+  security_bsv %>%
+  dplyr::filter(
+    setting == "actual" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "original_asert_asert" |
+      setting == "asert_asert_asert" |
+      setting == "cw144_cw144_cw144" |
+      setting == "cw144_asert_asert" |
+      setting == "asert_asert_cw144" 
+  ) %>%
+  dplyr::mutate(currency = factor(currency, levels = c("BTC", "BCH", "BSV"))) %>%
+  ggplot(
+    aes(
+      x = factor(setting, level = level_order),
+      y = SpEC,
+      fill = currency
+    )
+  ) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+    ) +
+  labs(
+    x = "Setting",
+    y = "Attack cost per operation cost"
+  ) +
+  scale_fill_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    axis.title.x = element_blank(),
+    legend.title=element_blank()
+  ) +
+  theme(axis.text.x = element_text(angle=60, vjust=1, hjust=1))
+
+legend <- ggpubr::get_legend(SpEC_bsv)
+SpEC_bsv_legend <- ggpubr::as_ggplot(legend)
+        
+SpEC_bsv <-
+  SpEC_bsv +
+          theme(
+            legend.position = "none"
+          )
+
+plot(SpEC_bsv)
+  
+```
+
+### Export {.tabset}
+
+
+```{r}
+### BTC
+ggsave(
+  path = "../figuretable/summarize_security_cost",
+  filename = "96path_btc_SpEC.png",
+  plot = SpEC_btc,
+  width = 4,
+  height = 3
+        ) 
+
+ggsave(
+  path = "../figuretable/summarize_security_cost",
+  filename = "96path_btc_SpEC_legend.png",
+  plot = SpEC_btc_legend,
+  width = 2,
+  height = 0.5
+        ) 
+
+table <-
+  security_btc %>%
+  dplyr::filter(
+    setting ==  "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "asert_asert_asert"
+  ) %>% 
+    dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "Scenario 1"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "Scenario 2"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "Scenario 3"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "Scenario 4"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern = "original_asert_cw144",
+      replacement = "Scenario 5"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern = "asert_asert_asert",
+      replacement = "Scenario 6"
+      ),
+    TRUE ~ setting
+    )
+    ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "SpEC_{currency}",
+    values_from = SpEC
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    SpEC_BTC,
+    SpEC_BCH,
+    SpEC_BSV
+  ) %>%
+  dplyr::arrange(setting)
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 3, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV"
+    ),
+    align = c("l", rep("c", 3), rep("c", 3))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "SpEC" = 3
+    )
+  )
+  
+  
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 3, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV"
+    ),
+    align = c("l", rep("c", 3), rep("c", 3)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "SpEC" = 3
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_btc_SpEC.tex"))
+
+```
+
+```{r}
+operation_electricity_actual <-
+  security_btc %>%
+  dplyr::filter(
+    setting ==  "actual"
+  ) %>% 
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "operation_electricity_{currency}",
+    values_from = operation_electricity
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    operation_electricity_BTC,
+    operation_electricity_BCH,
+    operation_electricity_BSV
+  ) %>%
+  dplyr::mutate(
+    operation_electricity_Total = 
+      operation_electricity_BTC + 
+      operation_electricity_BCH + 
+      operation_electricity_BSV
+  )
+
+operation_electricity_actual %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("operation"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Operating Cost (GW)" = 4
+    )
+  )
+
+operation_electricity_actual %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("operation"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Operating cost (GW)" = 4
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_btc_operating_cost.tex"))
+```
+
+```{r}
+table <-
+  security_btc %>%
+  dplyr::filter(
+    setting ==  "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "asert_asert_asert"
+  ) %>% 
+    dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "Scenario 1"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "Scenario 2"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "Scenario 3"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "Scenario 4"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern = "original_asert_cw144",
+      replacement = "Scenario 5"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern = "asert_asert_asert",
+      replacement = "Scenario 6"
+      ),
+    TRUE ~ setting
+    )
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "saving_{currency}",
+    values_from = operation_electricity_saving
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    saving_BTC,
+    saving_BCH,
+    saving_BSV
+  ) %>%
+  dplyr::mutate(
+    saving_Total = saving_BTC + saving_BCH + saving_BSV
+  ) %>%
+  dplyr::arrange(setting)
+
+table %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("saving"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Saving (GW)" = 4
+    )
+  )
+  
+  
+table %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("saving"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Saving (GW)" = 4
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_btc_saving.tex"))
+
+```
+
+
+
+```{r}
+### BCH
+ggsave(
+  path = "../figuretable/summarize_security_cost",
+  filename = "96path_bch_SpEC.png",
+  plot = SpEC_bch,
+  width = 4,
+  height = 3
+        ) 
+
+ggsave(
+  path = "../figuretable/summarize_security_cost",
+  filename = "96path_bch_SpEC_legend.png",
+  plot = SpEC_bch_legend,
+  width = 2,
+  height = 0.5
+        ) 
+
+table <-
+  security_bch %>%
+  dplyr::filter(
+    setting ==  "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "asert_asert_asert"
+  ) %>% 
+    dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "Scenario 1"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "Scenario 2"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "Scenario 3"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "Scenario 4"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern = "original_asert_cw144",
+      replacement = "Scenario 5"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern = "asert_asert_asert",
+      replacement = "Scenario 6"
+      ),
+    TRUE ~ setting
+    )
+    ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "SpEC_{currency}",
+    values_from = SpEC
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    SpEC_BTC,
+    SpEC_BCH,
+    SpEC_BSV
+  ) %>%
+  dplyr::arrange(setting)
+
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 3, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV"
+    ),
+    align = c("l", rep("c", 3), rep("c", 3))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "SpEC" = 3
+    )
+  )
+  
+  
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 3, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV"
+    ),
+    align = c("l", rep("c", 3), rep("c", 3)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "SpEC" = 3
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_bch_SpEC.tex"))
+
+```
+
+```{r}
+table <-
+  security_bch %>%
+  dplyr::filter(
+    setting ==  "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "asert_asert_asert"
+  ) %>% 
+    dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "Scenario 1"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "Scenario 2"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "Scenario 3"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "Scenario 4"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern = "original_asert_cw144",
+      replacement = "Scenario 5"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern = "asert_asert_asert",
+      replacement = "Scenario 6"
+      ),
+    TRUE ~ setting
+    )
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "saving_{currency}",
+    values_from = operation_electricity_saving
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    saving_BTC,
+    saving_BCH,
+    saving_BSV
+  ) %>%
+  dplyr::mutate(
+    saving_Total = saving_BTC + saving_BCH + saving_BSV
+  ) %>%
+  dplyr::arrange(setting)
+
+table %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("saving"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Saving (GW)" = 4
+    )
+  )
+  
+  
+table %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("saving"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Saving (GW)" = 4
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_bch_saving.tex"))
+
+```
+
+
+```{r}
+### BSV
+ggsave(
+  path = "../figuretable/summarize_security_cost",
+  filename = "96path_bsv_SpEC.png",
+  plot = SpEC_bsv,
+  width = 4,
+  height = 3
+        ) 
+
+ggsave(
+  path = "../figuretable/summarize_security_cost",
+  filename = "96path_bsv_SpEC_legend.png",
+  plot = SpEC_bsv_legend,
+  width = 2,
+  height = 0.5
+        ) 
+
+table <-
+  security_bsv %>%
+  dplyr::filter(
+    setting ==  "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "asert_asert_asert"
+  ) %>% 
+    dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "Scenario 1"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "Scenario 2"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "Scenario 3"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "Scenario 4"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern = "original_asert_cw144",
+      replacement = "Scenario 5"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern = "asert_asert_asert",
+      replacement = "Scenario 6"
+      ),
+    TRUE ~ setting
+    )
+    ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "SpEC_{currency}",
+    values_from = SpEC
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    SpEC_BTC,
+    SpEC_BCH,
+    SpEC_BSV
+  ) %>%
+  dplyr::arrange(setting)
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 3, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV"
+    ),
+    align = c("l", rep("c", 3), rep("c", 3))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "SpEC" = 3
+    )
+  )
+  
+  
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 3, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV"
+    ),
+    align = c("l", rep("c", 3), rep("c", 3)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "SpEC" = 3
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_bsv_SpEC.tex"))
+
+```
+
+
+```{r}
+table <-
+  security_bsv %>%
+  dplyr::filter(
+    setting ==  "actual" |
+      setting == "cw144_cw144_cw144" |
+      setting == "original_original_cw144" |
+      setting == "original_original_original" |
+      setting == "original_asert_cw144" |
+      setting == "asert_asert_asert"
+  ) %>% 
+    dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "Scenario 1"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "Scenario 2"
+      ),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "Scenario 3"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "Scenario 4"
+      ),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern = "original_asert_cw144",
+      replacement = "Scenario 5"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern = "asert_asert_asert",
+      replacement = "Scenario 6"
+      ),
+    TRUE ~ setting
+    )
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(setting, BTC, BCH, BSV),
+    names_from = currency,
+    names_glue = "saving_{currency}",
+    values_from = operation_electricity_saving
+  ) %>%
+  dplyr::select(
+    setting,
+    BTC,
+    BCH,
+    BSV,
+    saving_BTC,
+    saving_BCH,
+    saving_BSV
+  ) %>%
+  dplyr::mutate(
+    saving_Total = saving_BTC + saving_BCH + saving_BSV
+  ) %>%
+  dplyr::arrange(setting)
+
+table %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("saving"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4))
+  ) %>%
+  kable_styling() %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Saving (GW)" = 4
+    )
+  )
+  
+  
+table %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = dplyr::contains("saving"),
+      .fns = ~ . / 1e+9
+    )
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digits = 2, format = "f")
+  ) %>%
+  kbl(
+    col.names = c(
+      "",
+      "BTC",
+      "BCH",
+      "BSV",
+      "BTC",
+      "BCH",
+      "BSV",
+      "Total"
+    ),
+    align = c("l", rep("c", 3), rep("r", 4)),
+    booktabs = TRUE,
+    linesep = "",
+    format = "latex"
+  ) %>%
+  add_header_above(
+    c(
+      " " = 1,
+      "DAA" = 3,
+      "Saving (GW)" = 4
+    )
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_security_cost/96path_bsv_saving.tex"))
+
+```

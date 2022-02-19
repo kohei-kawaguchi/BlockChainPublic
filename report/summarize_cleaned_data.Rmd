@@ -1,0 +1,692 @@
+---
+title: "Codebook of cleaned data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# -------------- #
+# import library
+# -------------- #
+library(BlockChain)
+library(foreach)
+library(magrittr)
+library(kableExtra)
+```
+
+```{r}
+# --------- #
+# read data
+# --------- #
+# daily hashrate data
+currency_blockheight_hashrate <- readRDS(file = here::here("cleaned/currency_blockheight_hashrate.rds"))
+# daily hashrate data
+currency_date_hashrate <- readRDS(file = here::here("cleaned/currency_date_hashrate.rds"))
+# weekly hashrate data
+currency_week_hashrate <- readRDS(file = here::here("cleaned/currency_week_hashrate.rds"))
+# base reward data
+reward <- readRDS(file = here::here("cleaned/currency_reawrd_date.rds"))
+# currency rate data from kaiko
+rate <- readRDS(file = here::here("cleaned/currency_rate_date.rds"))
+# currency rate data from yahoo
+rate_yahoo <- readRDS(file = here::here("cleaned/currency_rate_date_yahoo.rds"))
+# asic machine
+asic_list <- readRDS(file = here::here("cleaned/asic_list.rds"))
+# gpu list
+gpu_list <- readRDS(file = here::here("cleaned/gpu_list.rds"))
+# asic trend
+asic_trend <- readRDS(file = here::here("cleaned/asic_trend.rds"))
+# gpu trend
+gpu_trend <- readRDS(file = here::here("cleaned/gpu_trend.rds"))
+```
+
+# variables {.tabset}
+
+## currency_blockheight_hashrate.rds
+
+### key variables:
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `currency`| symbol of the cryptocurrency | `r length(unique(currency_blockheight_hashrate$currency))` |
+| `algo` | PoW algorithm used | `r length(unique(currency_blockheight_hashrate$algo))` |
+| `blockheight` | height of the block | `r length(unique(currency_blockheight_hashrate$date))` |
+
+### categorical Variables
+
+| column names | definition | 
+|--------------|------------|
+| `bits` | bits of the block|
+
+
+### numerical Variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `datetime` | the datetime of the block generation | YYYY-MM-DD HH-mm-ss |
+| `winning_rate` | probability of win | probability per h/s hash |
+| `block_time` | the average of the block generation time since the last generation | s | 
+| `inverse_hash_rate` | inverse of the hash rate | 1/(h/s) | 
+| `hash_rate` | average of the hash rate | h/s |
+| `blockhash` | hash compared to the winning rate | real number between 0 and 1| 
+
+
+```{r}
+currency_blockheight_hashrate %>%
+  modelsummary::datasummary_skim()
+```
+
+
+## currency_date_hashrate.rds
+
+### key variables:
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `currency`| symbol of the cryptocurrency | `r length(unique(currency_date_hashrate$currency))` |
+| `algo` | PoW algorithm used | `r length(unique(currency_date_hashrate$algo))` |
+| `date` | date of the record | `r length(unique(currency_date_hashrate$date))` |
+
+### categorical Variables
+
+- Nothing.
+
+### numerical Variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `blockheight` | block height at the beginning of the date | block |
+| `winning_rate` | probability of win | probability per h/s hash |
+| `block_time` | the average of the block generation time since the last generation | s | 
+| `inverse_hash_rate` | inverse of the hash rate | 1/(h/s) | 
+| `hash_rate` | average of the hash rate | h/s |
+| `hash_rate_sd` | standard deviation of the hash rate  | h/s |
+| `block_time_sd` | standard deviation of the block time | s |
+
+
+```{r}
+currency_date_hashrate %>%
+  modelsummary::datasummary_skim()
+```
+
+## currency_week_hashrate.rds
+
+### key variables:
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `currency`| symbol of the cryptocurrency | `r length(unique(currency_week_hashrate$currency))` |
+| `algo` | PoW algorithm used | `r length(unique(currency_week_hashrate$algo))` |
+| `week` | Sunday of the week of the record | `r length(unique(currency_week_hashrate$week))` |
+
+### categorical Variables
+
+- Nothing.
+
+### numerical Variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `blockheight` | block height at the beginning of the week | block |
+| `winning_rate` | probability of win | probability per h/s hash |
+| `block_time` | the average of the block generation time since the last generation | s | 
+| `inverse_hash_rate` | inverse of the hash rate | 1/(h/s) | 
+| `hash_rate` | average of the hash rate | h/s |
+| `hash_rate_sd` | standard deviation of the hash rate  | h/s |
+| `block_time_sd` | standard deviation of the block time | s |
+
+
+```{r}
+currency_week_hashrate %>%
+  modelsummary::datasummary_skim()
+```
+
+
+## currency_reward_date.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `currency`| symbol of the cryptocurrency | `r length(unique(reward$currency))` |
+| `date` | date of the record | `r length(unique(reward$date))` |
+
+### categorical variables
+
+- Nothing.
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `reward` | reward of block generation | token/block | 
+
+```{r}
+reward %>% 
+  modelsummary::datasummary_skim()  
+```
+
+## currency_rate_date.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `currency`| symbol of the cryptocurrency | `r length(unique(rate$currency))` |
+| `date` | date of the record | `r length(unique(rate$date))` |
+
+### categorical variables
+
+- Nothing.
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `rate_quotebtc` | value of the currency in terms of btc | BTC/token |
+| `rate_quoteusd` | value of the currency in terms of USD | USD/token |
+| `volume` | transaction volume with USD for BTC and with BTC for others | Count |
+
+```{r}
+rate %>%
+  modelsummary::datasummary_skim()
+```
+
+## currency_rate_date_yahoo.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `currency`| symbol of the cryptocurrency | `r length(unique(rate_yahoo$currency))` |
+| `date` | date of the record | `r length(unique(rate_yahoo$date))` |
+
+### categorical variables
+
+- Nothing.
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `rate_quoteusd` | value of the currency in terms of USD | USD/token |
+| `volume` | transaction volume with USD | Billion USD |
+
+```{r}
+rate_yahoo %>%
+  modelsummary::datasummary_skim()
+```
+
+## asic_list.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `model`| name of the asic machine | `r length(unique(asic_list$model))` |
+
+### categorical variables
+
+| column names | definition | 
+|--------------|------------|
+| `algo` | applicable PoW algorithm applicable|
+| `release` | release date of the machine | 
+
+```{r}
+asic_list %>%
+  dplyr::mutate(release = as.character(release)) %>%
+  modelsummary::datasummary_skim(type = "categorical")
+```
+
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `hash_rate_spec` | hash power generate by the machine | h/s |
+| `power` | power to obtain the hash rate | W |
+
+
+```{r}
+asic_list %>%
+  modelsummary::datasummary_skim()
+```
+
+## gpu_list.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `model`| name of the gpu machine | `r length(unique(gpu_list$model))` |
+
+### categorical variables
+
+| column names | definition | 
+|--------------|------------|
+| `algo` | applicable PoW algorithm applicable|
+| `release` | release date of the machine | 
+
+```{r}
+gpu_list %>%
+  dplyr::mutate(release = as.character(release)) %>%
+  modelsummary::datasummary_skim(type = "categorical")
+```
+
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `hash_rate_spec` | hash power generate by the machine | h/s |
+| `power` | power to obtain the hash rate | W |
+
+
+```{r}
+gpu_list %>%
+  modelsummary::datasummary_skim()
+```
+
+## asic_trend.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `model`| name of the asic machine | `r length(unique(asic_trend$model))` |
+| `month` | initial date of the month | `r length(unique(asic_trend$month))`` |
+
+### categorical variables
+
+- Nothing.
+
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `hits` | google trend hits | relative search volume within each keyword |
+
+
+```{r}
+asic_trend %>%
+  modelsummary::datasummary_skim()
+```
+
+## gpu_trend.rds
+
+### key variables
+
+| column names | definition | unique values |
+|--------------|------------|---------------|
+| `model`| name of the asic machine | `r length(unique(gpu_trend$model))` |
+| `month` | initial date of the month | `r length(unique(gpu_trend$month))`` |
+
+### categorical variables
+
+- Nothing.
+
+
+### numerical variables
+
+| column names | definition | unit |
+|--------------|------------|------|
+| `hits` | google trend hits | relative search volume within each keyword |
+
+
+```{r}
+gpu_trend %>%
+  modelsummary::datasummary_skim()
+```
+
+
+# Export {.tabset}
+
+```{r}
+currency_blockheight_hashrate_sha256 <-
+  currency_blockheight_hashrate %>%
+  dplyr::filter(algo == "sha256")
+currency_blockheight_hashrate_sha256 %>%
+  dplyr::summarise(
+    start = min(datetime),
+    end = max(datetime)
+  ) %>%
+  kbl() %>%
+  kable_styling()
+
+table <-
+  currency_blockheight_hashrate_sha256 %>%
+  dplyr::group_by(currency) %>%
+  dplyr::summarise(
+    dplyr::across(
+      .cols = c(winning_rate, block_time, hash_rate),
+      .fns = list(
+        n = length,
+        mean = mean,
+        sd = sd,
+        min = min,
+        max = max
+      ),
+      .names = "{.col}-{.fn}"
+    )
+  ) %>%
+  tidyr::pivot_longer(
+    cols = - 1,
+    names_sep = "-",
+    names_to = c("variable", "stat")
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(currency, variable),
+    names_from = stat,
+    values_from = value
+  ) 
+
+table <-
+  dplyr::bind_rows(
+    table %>% dplyr::filter(currency == "BTC"),
+    table %>% dplyr::filter(currency == "BCH"),
+    table %>% dplyr::filter(currency == "BSV")
+  )
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 3)
+  ) %>%
+  dplyr::group_by(currency) %>%
+  dplyr::mutate(
+    currency = ifelse(dplyr::row_number() > 1, "", currency)
+  ) %>%
+  dplyr::mutate(
+    variable = 
+      dplyr::case_when(
+        variable == "winning_rate" ~ "Winning rate",
+        variable == "block_time" ~ "Block time (s)",
+        variable == "hash_rate" ~ "Hash rate (h/s)"
+      )
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", "l", rep("r", ncol(.) - 2))
+  ) %>%
+  kable_styling()
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 3)
+  ) %>%
+  dplyr::group_by(currency) %>%
+  dplyr::mutate(
+    currency = ifelse(dplyr::row_number() > 1, "", currency)
+  ) %>%
+  dplyr::mutate(
+    variable = 
+      dplyr::case_when(
+        variable == "winning_rate" ~ "Winning rate",
+        variable == "block_time" ~ "Block time (s)",
+        variable == "hash_rate" ~ "Hash rate (H/s)"
+      )
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", "l", rep("r", ncol(.) - 2)),
+    format = "latex",
+    linesep = ""
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_cleaned_data/currency_height_sha256_summary.tex")
+  )
+```
+
+```{r}
+table <-
+  currency_blockheight_hashrate_sha256 %>%
+  dplyr::filter(datetime >= "2019-01-01") %>%
+  dplyr::group_by(currency) %>%
+  dplyr::summarise(
+    dplyr::across(
+      .cols = c(winning_rate, block_time, hash_rate),
+      .fns = list(
+        n = length,
+        mean = mean,
+        sd = sd,
+        min = min,
+        max = max
+      ),
+      .names = "{.col}-{.fn}"
+    )
+  ) %>%
+  tidyr::pivot_longer(
+    cols = - 1,
+    names_sep = "-",
+    names_to = c("variable", "stat")
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(currency, variable),
+    names_from = stat,
+    values_from = value
+  ) 
+
+table <-
+  dplyr::bind_rows(
+    table %>% dplyr::filter(currency == "BTC"),
+    table %>% dplyr::filter(currency == "BCH"),
+    table %>% dplyr::filter(currency == "BSV")
+  )
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 3)
+  ) %>%
+  dplyr::group_by(currency) %>%
+  dplyr::mutate(
+    currency = ifelse(dplyr::row_number() > 1, "", currency)
+  ) %>%
+  dplyr::mutate(
+    variable = 
+      dplyr::case_when(
+        variable == "winning_rate" ~ "Winning rate",
+        variable == "block_time" ~ "Block time (s)",
+        variable == "hash_rate" ~ "Hash rate (h/s)"
+      )
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", "l", rep("r", ncol(.) - 2))
+  ) %>%
+  kable_styling()
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 3)
+  ) %>%
+  dplyr::group_by(currency) %>%
+  dplyr::mutate(
+    currency = ifelse(dplyr::row_number() > 1, "", currency)
+  ) %>%
+  dplyr::mutate(
+    variable = 
+      dplyr::case_when(
+        variable == "winning_rate" ~ "Winning rate",
+        variable == "block_time" ~ "Block time (s)",
+        variable == "hash_rate" ~ "Hash rate (H/s)"
+      )
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", "l", rep("r", ncol(.) - 2)),
+    format = "latex",
+    linesep = ""
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_cleaned_data/currency_height_sha256_since2019_summary.tex")
+  )
+```
+
+
+
+```{r}
+rate_yahoo_sha256 <-
+  rate_yahoo %>%
+  dplyr::filter(
+    currency == "BTC" |
+      currency == "BCH" |
+      currency == "BSV"
+  )
+rate_yahoo_sha256 %>%
+  dplyr::group_by(currency) %>%
+  dplyr::summarise(
+    start = min(date),
+    end = max(date)
+  ) %>%
+  kbl() %>%
+  kable_styling()
+
+table <-
+  rate_yahoo_sha256 %>%
+  dplyr::group_by(currency) %>%
+  dplyr::summarise(
+        n = sum(!is.na(rate_quoteusd), na.rm = TRUE),
+        mean = mean(rate_quoteusd, na.rm = TRUE),
+        sd = sd(rate_quoteusd, na.rm = TRUE),
+        min = min(rate_quoteusd, na.rm = TRUE),
+        max = max(rate_quoteusd, na.rm = TRUE)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    variable = "Price (USD)"
+  ) %>%
+  dplyr::select(currency, variable, dplyr::everything())
+
+table <-
+  dplyr::bind_rows(
+    table %>% dplyr::filter(currency == "BTC"),
+    table %>% dplyr::filter(currency == "BCH"),
+    table %>% dplyr::filter(currency == "BSV")
+  )
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 1, format = "f")
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("r", ncol(.) - 1))
+  ) %>%
+  kable_styling()
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 1, format = "f")
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("r", ncol(.) - 1)),
+    format = "latex",
+    linesep = ""
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_cleaned_data/currency_date_rate_sha256_summary.tex")
+  )
+
+```
+
+```{r}
+table <-
+  rate_yahoo_sha256 %>%
+  dplyr::filter(date >= "2019-01-01") %>%
+  dplyr::group_by(currency) %>%
+  dplyr::summarise(
+        n = sum(!is.na(rate_quoteusd), na.rm = TRUE),
+        mean = mean(rate_quoteusd, na.rm = TRUE),
+        sd = sd(rate_quoteusd, na.rm = TRUE),
+        min = min(rate_quoteusd, na.rm = TRUE),
+        max = max(rate_quoteusd, na.rm = TRUE)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    variable = "Price (USD)"
+  ) %>%
+  dplyr::select(currency, variable, dplyr::everything())
+
+table <-
+  dplyr::bind_rows(
+    table %>% dplyr::filter(currency == "BTC"),
+    table %>% dplyr::filter(currency == "BCH"),
+    table %>% dplyr::filter(currency == "BSV")
+  )
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 1, format = "f")
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("r", ncol(.) - 1))
+  ) %>%
+  kable_styling()
+
+table %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 1, format = "f")
+  ) %>%
+  magrittr::set_colnames(
+    Hmisc::capitalize(colnames(.))
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("r", ncol(.) - 1)),
+    format = "latex",
+    linesep = ""
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/summarize_cleaned_data/currency_date_rate_sha256_since2019_summary.tex")
+  )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

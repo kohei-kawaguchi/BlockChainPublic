@@ -1,0 +1,3643 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# initialize --------------------------------------------------------------
+library(BlockChain)
+library(magrittr)
+library(foreach)
+library(modelsummary)
+library(ggplot2)
+library(viridis)
+library(knitr)
+library(stringr)
+```
+
+```{r}
+# read data for BTC ---------------------------------------------------------------
+savename_list_btc <-
+  list.files(
+    path = "../output",
+    pattern = "epoch_currency_btc_halving",
+    full.names = TRUE
+  )
+
+savename_list_btc_asert_cw144 <-
+  savename_list_btc[
+    grep(
+      "96",
+      savename_list_btc,
+      invert = TRUE
+      )
+    ]
+
+savename_list_btc_actual <-
+  savename_list_btc[
+    grep(
+      "asert|96",
+      savename_list_btc,
+      invert = TRUE
+      )
+    ]
+
+savename_list_btc_actual_ccc <-
+  savename_list_btc[
+    grep(
+      "asert|96|cw144_original_original|original_original_cw144|original_original_original",
+      savename_list_btc,
+      invert = TRUE
+      )
+    ]
+
+savename_list_btc_ooc_ooo <-
+  savename_list_btc[
+    grep(
+      "asert|96|cw144_original_original|cw144_cw144_cw144",
+      savename_list_btc,
+      invert = TRUE
+      )
+    ]
+
+savename_list_btc_asert <- 
+  savename_list_btc[
+    c(
+    grep(
+      "actual",
+      savename_list_btc
+      ),
+    grep(
+      "asert",
+      savename_list_btc
+      )
+    )
+    ]
+
+savename_list_btc_asert <- 
+  savename_list_btc_asert[
+    grep(
+      "96",
+      savename_list_btc_asert,
+      invert = TRUE
+      )
+    ]
+
+savename_list_btc_actual_96 <-
+  savename_list_btc[
+    grep(
+      "96_mean_actual|96_mean_original_original_cw144|96_mean_original_original_original",
+      savename_list_btc
+      )
+    ]
+
+epoch_currency_simulated_btc_asert_cw144 <-
+  savename_list_btc_asert_cw144 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_asert_cw144 %>%
+      gsub("../output/epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+
+epoch_currency_simulated_btc_actual <-
+  savename_list_btc_actual %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_actual %>%
+      gsub("../output/epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_btc_actual_ccc <-
+  savename_list_btc_actual_ccc %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_actual_ccc %>%
+      gsub("../output/epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_btc_ooc_ooo <-
+  savename_list_btc_ooc_ooo %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_ooc_ooo %>%
+      gsub("../output/epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_btc_asert <-
+  savename_list_btc_asert %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_asert %>%
+      gsub("../output/epoch_currency_btc_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+
+epoch_currency_simulated_btc_actual_96 <-
+  savename_list_btc_actual_96 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_btc_actual_96 %>%
+      gsub("../output/epoch_currency_btc_halving_96_mean_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+```
+
+
+
+```{r}
+# read data for BCH---------------------------------------------------------------
+savename_list_bch <-
+  list.files(
+    path = "../output",
+    pattern = "epoch_currency_bch_halving",
+    full.names = TRUE
+  )
+
+savename_list_bch_asert_cw144 <-
+  savename_list_bch[
+    grep(
+      "96",
+      savename_list_bch,
+      invert = TRUE
+      )
+    ]
+
+savename_list_bch_actual <-
+  savename_list_bch[
+    grep(
+      "asert|96|cw144_original_original",
+      savename_list_bch,
+      invert = TRUE
+      )
+    ]
+
+savename_list_bch_asert <- 
+  savename_list_bch[
+    c(
+    grep(
+      "actual",
+      savename_list_bch
+      ),
+    grep(
+      "asert",
+      savename_list_bch
+      )
+    )
+    ]
+
+savename_list_bch_asert <- 
+  savename_list_bch_asert[
+    grep(
+      "96",
+      savename_list_bch_asert,
+      invert = TRUE
+      )
+    ]
+
+savename_list_bch_actual_96 <-
+  savename_list_bch[
+    grep(
+      "96_mean_actual|96_mean_original_original_cw144|96_mean_original_original_original",
+      savename_list_bch
+      )
+    ]
+
+
+epoch_currency_simulated_bch_asert_cw144 <-
+  savename_list_bch_asert_cw144 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bch_asert_cw144 %>%
+      gsub("../output/epoch_currency_bch_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+
+epoch_currency_simulated_bch_actual <-
+  savename_list_bch_actual %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bch_actual %>%
+      gsub("../output/epoch_currency_bch_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_bch_asert <-
+  savename_list_bch_asert %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bch_asert %>%
+      gsub("../output/epoch_currency_bch_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_bch_actual_96 <-
+  savename_list_bch_actual_96 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bch_actual_96 %>%
+      gsub("../output/epoch_currency_bch_halving_96_mean_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+```
+
+
+```{r}
+# read data for BSV ---------------------------------------------------------------
+savename_list_bsv <-
+  list.files(
+    path = "../output",
+    pattern = "epoch_currency_bsv_halving",
+    full.names = TRUE
+  )
+
+savename_list_bsv_asert_cw144 <-
+  savename_list_bsv[
+    grep(
+      "96",
+      savename_list_bsv,
+      invert = TRUE
+      )
+    ]
+
+savename_list_bsv_actual <-
+  savename_list_bsv[
+    grep(
+      "asert|96|cw144_original_original",
+      savename_list_bsv,
+      invert = TRUE
+      )
+    ]
+
+savename_list_bsv_asert <- 
+  savename_list_bsv[
+    c(
+    grep(
+      "actual",
+      savename_list_bsv
+      ),
+    grep(
+      "asert",
+      savename_list_bsv
+      )
+    )
+    ]
+
+savename_list_bsv_asert <- 
+  savename_list_bsv_asert[
+    grep(
+      "96",
+      savename_list_bsv_asert,
+      invert = TRUE
+      )
+    ]
+
+savename_list_bsv_actual_96 <-
+  savename_list_bsv[
+    grep(
+      "96_mean_actual|96_mean_original_original_cw144|96_mean_original_original_original",
+      savename_list_bsv
+      )
+    ]
+
+epoch_currency_simulated_bsv_asert_cw144 <-
+  savename_list_bsv_asert_cw144 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bsv_asert_cw144 %>%
+      gsub("../output/epoch_currency_bsv_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+
+epoch_currency_simulated_bsv_actual <-
+  savename_list_bsv_actual %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bsv_actual %>%
+      gsub("../output/epoch_currency_bsv_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_bsv_asert <-
+  savename_list_bsv_asert %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bsv_asert %>%
+      gsub("../output/epoch_currency_bsv_halving_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+
+epoch_currency_simulated_bsv_actual_96 <-
+  savename_list_bsv_actual_96 %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(
+    savename_list_bsv_actual_96 %>%
+      gsub("../output/epoch_currency_bsv_halving_96_mean_", "", .) %>%
+      gsub(".rds", "", .)
+  ) %>%
+  dplyr::bind_rows(.id = "setting")
+```
+
+## Scenario profile
+
+```{r}
+daa_actual <- 
+  data.frame(
+    BTC = "Original DAA", 
+    BCH = "CW-144", 
+    BSV = "CW-144",
+    setting = "actual",
+    Scenario = "1.actual",
+    row.names = "actual"
+    )
+
+daa_bch_uses_btc_daa <- 
+  data.frame(
+    BTC = "Original DAA",
+    BCH = "Original DAA",
+    BSV = "CW-144",
+    setting = "original_original_cw144",
+    Scenario = "2.original_original_cw144",
+    row.names = "bch_uses_btc_daa"
+    )
+
+daa_all_use_btc_daa <- 
+  data.frame(
+    BTC = "Original DAA",
+    BCH = "Original DAA",
+    BSV = "Original DAA",
+    setting = "original_original_original",
+    Scenario = "3.original_original_original",
+    row.names = "all_use_btc_daa"
+    )
+  
+daa_bch_uses_asert_daa <- 
+  data.frame(
+    BTC = "Original DAA", 
+    BCH = "ASERT",
+    BSV = "CW-144",
+    setting = "original_asert_cw144",
+    Scenario = "5.original_asert_cw144",
+    row.names = "bch_uses_asert_daa"
+    )
+
+daa_bch_bsv_use_asert_daa <-
+  data.frame(
+    BTC = "Original DAA", 
+    BCH = "ASERT",
+    BSV = "ASERT",
+    setting = "original_asert_asert",
+    Scenario = "original_asert_asert",
+    row.names = "bch_bsv_use_asert_daa"
+    )
+
+daa_all_use_asert_daa <- 
+  data.frame(
+    BTC = "ASERT",
+    BCH = "ASERT",
+    BSV = "ASERT",
+    setting = "asert_asert_asert",
+    Scenario = "asert_asert_asert",
+    row.names = "all_use_asert_daa"
+    )
+  
+daa_btc_uses_bch_daa <- 
+  data.frame(
+    BTC = "CW-144",
+    BCH = "CW-144",
+    BSV = "CW-144",
+    setting = "cw144_cw144_cw144",
+    Scenario = "4.cw144_cw144_cw144",
+    row.names = "btc_uses_bch_daa"
+    )
+
+daa_btc_uses_bch_daa_bch_bsv_use_asert_daa <- 
+  data.frame(
+    BTC = "CW-144",
+    BCH = "ASERT",
+    BSV = "ASERT",
+    setting = "cw144_asert_asert",
+    Scenario = "cw144_asert_asert",
+    row.names = "btc_uses_bch_daa_bch_bsv_use_asert_daa"
+    )
+
+daa_btc_bch_use_asert_daa <- 
+  data.frame(
+    BTC = "ASERT",
+    BCH = "ASERT",
+    BSV = "CW-144",
+    setting = "asert_asert_cw144",
+    Scenario = "asert_asert_cw144",
+    row.names = "btc_bch_use_asert_daa"
+    )
+
+daa_cw144_original_original <-
+  data.frame(
+    "BTC" = "CW-144",
+    "BCH" = "Original DAA",
+    "BSV" = "Original DAA",
+    setting = "cw144_original_original",
+    Scenario = "cw144_original_original",
+    row.names = "btc_uses_bch_daa_bch_bsv_use_btc_daa"
+  )
+
+profile <- 
+  dplyr::bind_rows(
+    list(
+      daa_actual,
+      daa_bch_uses_btc_daa,
+      daa_all_use_btc_daa,
+      daa_bch_uses_asert_daa,
+      daa_bch_bsv_use_asert_daa,
+      daa_all_use_asert_daa,
+      daa_btc_uses_bch_daa,
+      daa_btc_uses_bch_daa_bch_bsv_use_asert_daa,
+      daa_btc_bch_use_asert_daa,
+      daa_cw144_original_original
+      )
+    )
+
+kable(profile)
+```
+
+```{r}
+# set color and scenario
+
+#set.seed(11)
+#viridis::viridis(10, option = "D") %>% 
+  #sample(10, replace = FALSE) 
+scales::viridis_pal()(5)
+
+color_list <- c(
+  "#440154FF",
+  "#FDE725FF",
+  "#3B528BFF", 
+  "#5DC863FF",
+  "#440154FF",
+  "#9FDA3AFF",
+  "#21908CFF",
+  "#277F8EFF",
+  "#ff9933",
+  "#FF4A89FF"
+) %>% 
+  as.data.frame()
+colnames(color_list) <- c("color")
+
+scenario_list <- as.data.frame(
+  c(
+    "actual",
+    "original_original_cw144",
+    "original_original_original",
+    "original_asert_cw144",
+    "original_asert_asert",
+    "asert_asert_asert",
+    "cw144_cw144_cw144",
+    "cw144_asert_asert",
+    "asert_asert_cw144",
+    "cw144_original_original"
+  )
+  )
+colnames(scenario_list) <- c("scenario")
+
+color_table <- cbind(
+  color_list,
+  scenario_list,
+  profile)
+
+kable(color_table)
+```
+
+# Simulation around the reward change {.tabset}
+
+## Compare daa regimes at the epoch level around BTC halving {.tabset}
+
+### Compare CW-144 and ASERT at the epoch level around BTC halving {.tabset}
+
+#### BCH
+
+```{r}
+
+base <- "BTC"
+cutoff <- 630000
+
+datetime_cutoff_btc_asert_cw144 <-
+  epoch_currency_simulated_btc_asert_cw144 %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_btc_asert_cw144 <-
+  epoch_currency_simulated_btc_asert_cw144 %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_btc_asert_cw144,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+
+epoch_currency_btc_actual_bch_asert <-
+  epoch_currency_btc_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_cw144",
+      "actual"
+      )
+    ) 
+
+epoch_currency_btc_actual_bch_bsv_asert <-
+  epoch_currency_btc_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_asert",
+      "original_asert_cw144"
+      )
+    )
+
+epoch_currency_btc_actual_bch_all_asert <-
+  epoch_currency_btc_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "asert_asert_asert",
+      "cw144_asert_asert"
+      )
+    )
+
+epoch_currency_btc_bch_use_asert_daa <-
+  epoch_currency_btc_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "actual",
+      "asert_asert_cw144"
+      )
+    )
+
+epoch_currency_btc_scenario_5_6 <-
+  epoch_currency_btc_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_cw144",
+      "asert_asert_asert",
+      "actual"
+      )
+    ) 
+
+
+```
+
+
+```{r}
+#own 
+plot_around_halving(
+    epoch_currency_btc_actual_bch_asert,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+       "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1,
+    legend = "none"
+  ) 
+
+```
+
+```{r}
+#cross on BSV
+plot_around_halving(
+    epoch_currency_btc_actual_bch_asert,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+       "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+
+```{r}
+#cross on BTC
+plot_around_halving(
+    epoch_currency_btc_actual_bch_asert,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+       "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+#### BSV
+
+```{r}
+#own
+plot_around_halving(
+    epoch_currency_btc_actual_bch_bsv_asert,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BCH
+plot_around_halving(
+    epoch_currency_btc_actual_bch_bsv_asert,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BTC
+plot_around_halving(
+    epoch_currency_btc_actual_bch_bsv_asert,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### BTC
+
+```{r}
+#own
+plot_around_halving(
+    epoch_currency_btc_actual_bch_all_asert,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BCH
+plot_around_halving(
+    epoch_currency_btc_actual_bch_all_asert,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BSV
+plot_around_halving(
+    epoch_currency_btc_actual_bch_all_asert,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### ASERT_ASERT_CW144
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_bch_use_asert_daa,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_bch_use_asert_daa,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_bch_use_asert_daa,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+
+#### Export to Figuretable
+
+```{r}
+epoch_currency_btc_scenario_5_6_export <- 
+  epoch_currency_btc_scenario_5_6 %>% 
+  dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "1. actual"),
+    setting == "original_asert_cw144"~ str_replace(
+      setting, 
+      pattern="original_asert_cw14",
+      replacement = "5. original_asert_cw144"
+      ),
+    setting == "asert_asert_asert"~ str_replace(
+      setting, 
+      pattern="asert_asert_asert",
+      replacement = "6. asert_asert_asert"
+      )
+    )
+    )
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_scenario_5_6_export,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 3.5,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    figure = TRUE,
+    legend = "none",
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_asert_cw144_target_bch_winning_rate.png",
+      "btc_halving_original_asert_cw144_target_bch_expected_reward.png",
+      "btc_halving_original_asert_cw144_target_bch_hash_rate.png",
+      "btc_halving_original_asert_cw144_target_bch_block_time.png",
+      "btc_halving_original_asert_cw144_target_bch_block_height.png",
+      "btc_halving_original_asert_cw144_target_bch_legend.png"
+      )
+    )
+
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_scenario_5_6_export,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 3.5,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    figure = TRUE,
+    legend = "none",
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_asert_cw144_target_btc_winning_rate.png",
+      "btc_halving_original_asert_cw144_target_btc_expected_reward.png",
+      "btc_halving_original_asert_cw144_target_btc_hash_rate.png",
+      "btc_halving_original_asert_cw144_target_btc_block_time.png",
+      "btc_halving_original_asert_cw144_target_btc_block_height.png",
+      "btc_halving_original_asert_cw144_target_btc_legend.png")
+    )
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_scenario_5_6_export,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 3.5,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    figure = TRUE,
+    legend = "none",
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_asert_cw144_target_bsv_winning_rate.png",
+      "btc_halving_original_asert_cw144_target_bsv_expected_reward.png",
+      "btc_halving_original_asert_cw144_target_bsv_hash_rate.png",
+      "btc_halving_original_asert_cw144_target_bsv_block_time.png",
+      "btc_halving_original_asert_cw144_target_bsv_block_height.png",
+      "btc_halving_original_asert_cw144_target_bsv_legend.png"
+      )
+    )
+```
+
+
+### Compare CW144_original_original at the epoch level around BTC halving {.tabset}
+
+#### BTC
+
+```{r}
+base <- "BTC"
+cutoff <- 630000
+
+datetime_cutoff_btc_actual <-
+  epoch_currency_simulated_btc_actual %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_btc_actual <-
+  epoch_currency_simulated_btc_actual %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_btc_actual,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual,
+    target = "BTC",
+    base = "BTC",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FF4A89FF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FF4A89FF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual,
+    target = "BCH",
+    base = "BTC",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FF4A89FF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FF4A89FF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual,
+    target = "BSV",
+    base = "BTC",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FF4A89FF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FF4A89FF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+
+### Compare daa regimes at the epoch level around BTC halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BTC"
+cutoff <- 630000
+
+datetime_cutoff_btc_actual_ccc <-
+  epoch_currency_simulated_btc_actual_ccc %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+datetime_cutoff_btc_ooc_ooo <-
+  epoch_currency_simulated_btc_ooc_ooo %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_btc_actual_ccc <-
+  epoch_currency_simulated_btc_actual_ccc %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_btc_actual_ccc,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+
+epoch_currency_btc_ooc_ooo <-
+  epoch_currency_simulated_btc_ooc_ooo %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_btc_ooc_ooo,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_ccc,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_ooc_ooo,
+    target = "BTC",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_ccc,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_ooc_ooo,
+    target = "BCH",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_ccc,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_ooc_ooo,
+    target = "BSV",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### Export to Figuretable
+
+```{r}
+#Add scenario number
+epoch_currency_btc_actual_ccc_export <- 
+  epoch_currency_btc_actual_ccc %>% 
+  dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "1. actual"),
+    setting == "cw144_cw144_cw144"~ str_replace(
+      setting, 
+      pattern="cw144_cw144_cw144",
+      replacement = "2. cw144_cw144_cw144"
+      )
+    )
+    )
+ 
+epoch_currency_btc_ooc_ooo_export <- 
+  epoch_currency_btc_ooc_ooo %>% 
+  dplyr::mutate(setting = dplyr::case_when(
+    setting == "actual"~ str_replace(
+      setting,
+      pattern="actual",
+      replacement = "1. actual"),
+    setting == "original_original_cw144"~ str_replace(
+      setting,
+      pattern="original_original_cw144",
+      replacement = "3. original_original_cw144"),
+    setting == "original_original_original"~ str_replace(
+      setting, 
+      pattern="original_original_original",
+      replacement = "4. original_original_original"
+      )
+    )
+    )
+
+
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_ccc_export,
+    target = "BTC",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#DEE318FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    figure = TRUE,
+    legend_width = 2.1,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    legend = "none",
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_daa_regimes_target_btc_actual_ccc_winning_rate.png",
+      "btc_halving_original_daa_regimes_target_btc_actual_ccc_expected_reward.png",
+      "btc_halving_original_daa_regimes_target_btc_actual_ccc_hash_rate.png",
+      "btc_halving_original_daa_regimes_target_btc_actual_ccc_block_time.png",
+      "btc_halving_original_daa_regimes_target_btc_actual_ccc_block_height.png",
+      "btc_halving_original_daa_regimes_target_btc_actual_ccc_legend.png"
+      )
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_ooc_ooo_export,
+    target = "BTC",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 3.5,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    legend = "none",
+    figure = TRUE,
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_daa_regimes_target_btc_ooc_ooo_winning_rate.png",
+      "btc_halving_original_daa_regimes_target_btc_ooc_ooo_expected_reward.png",
+      "btc_halving_original_daa_regimes_target_btc_ooc_ooo_hash_rate.png",
+      "btc_halving_original_daa_regimes_target_btc_ooc_ooo_block_time.png",
+      "btc_halving_original_daa_regimes_target_btc_ooc_ooo_block_height.png",
+      "btc_halving_original_daa_regimes_target_btc_ooc_ooo_legend.png"
+      )
+  ) 
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_ccc_export,
+    target = "BCH",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#DEE318FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 2.1,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    figure = TRUE,
+    legend = "none",
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_daa_regimes_target_bch_actual_ccc_winning_rate.png",
+      "btc_halving_original_daa_regimes_target_bch_actual_ccc_expected_reward.png",
+      "btc_halving_original_daa_regimes_target_bch_actual_ccc_hash_rate.png",
+      "btc_halving_original_daa_regimes_target_bch_actual_ccc_block_time.png",
+      "btc_halving_original_daa_regimes_target_bch_actual_ccc_block_height.png",
+      "btc_halving_original_daa_regimes_target_bch_actual_ccc_legend.png"
+      )
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_ooc_ooo_export,
+    target = "BCH",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 3.5,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    legend = "none",
+    figure = TRUE,
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_daa_regimes_target_bch_ooc_ooo_winning_rate.png",
+      "btc_halving_original_daa_regimes_target_bch_ooc_ooo_expected_reward.png",
+      "btc_halving_original_daa_regimes_target_bch_ooc_ooo_hash_rate.png",
+      "btc_halving_original_daa_regimes_target_bch_ooc_ooo_block_time.png",
+      "btc_halving_original_daa_regimes_target_bch_ooc_ooo_block_height.png",
+      "btc_halving_original_daa_regimes_target_bch_ooc_ooo_legend.png"
+      )
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_ccc_export,
+    target = "BSV",
+    base = "BTC",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#DEE318FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 2.1,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    figure = TRUE,
+    legend = "none",
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_daa_regimes_target_bsv_actual_ccc_winning_rate.png",
+      "btc_halving_original_daa_regimes_target_bsv_actual_ccc_expected_reward.png",
+      "btc_halving_original_daa_regimes_target_bsv_actual_ccc_hash_rate.png",
+      "btc_halving_original_daa_regimes_target_bsv_actual_ccc_block_time.png",
+      "btc_halving_original_daa_regimes_target_bsv_actual_ccc_block_height.png",
+      "btc_halving_original_daa_regimes_target_bsv_actual_ccc_legend.png"
+      )
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_ooc_ooo_export,
+    target = "BSV",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#DEE318FF",
+      "#238A8DFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 6,
+    colorsize = 5,
+    linesize = 0.5,
+    nrow = 1,
+    legend_width = 3.5,
+    legend_height = 0.4,
+    begin = 0,
+    end = 0.95,
+    legend = "none",
+    figure = TRUE,
+    path = "../figuretable/summarize_simulate_reduced_halving",
+    figurename = c(
+      "btc_halving_original_daa_regimes_target_bsv_ooc_ooo_winning_rate.png",
+      "btc_halving_original_daa_regimes_target_bsv_ooc_ooo_expected_reward.png",
+      "btc_halving_original_daa_regimes_target_bsv_ooc_ooo_hash_rate.png",
+      "btc_halving_original_daa_regimes_target_bsv_ooc_ooo_block_time.png",
+      "btc_halving_original_daa_regimes_target_bsv_ooc_ooo_block_height.png",
+      "btc_halving_original_daa_regimes_target_bsv_ooc_ooo_legend.png"
+      )
+  ) 
+```
+
+
+### Compare asert daa regimes at the epoch level around BTC halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BTC"
+cutoff <- 630000
+
+datetime_cutoff_btc_asert <-
+  epoch_currency_simulated_btc_asert %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_btc_asert <-
+  epoch_currency_simulated_btc_asert %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_btc_asert,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_asert,
+    target = "BTC",
+    base = "BTC",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_asert,
+    target = "BCH",
+    base = "BTC",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  )
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_asert,
+    target = "BSV",
+    base = "BTC",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+### Compare daa regimes at the epoch level 96 paths around BTC halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BTC"
+cutoff <- 630000
+
+epoch_currency_btc_actual_96 <-
+  epoch_currency_simulated_btc_actual_96 %>%
+  dplyr::filter(simulated) %>%
+  dplyr::mutate(datetime_relative = hour/24) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_96,
+    target = "BTC",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_96,
+    target = "BCH",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+    )
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_btc_actual_96,
+    target = "BSV",
+    base = "BTC",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+
+## Compare daa regimes at the epoch level around BCH halving {.tabset}
+
+### Compare CW-144 and ASERT at the epoch level around BCH halving {.tabset}
+
+#### BCH
+
+```{r}
+
+base <- "BCH"
+cutoff <- 630000
+
+datetime_cutoff_bch_asert_cw144 <-
+  epoch_currency_simulated_bch_asert_cw144 %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_bch_asert_cw144 <-
+  epoch_currency_simulated_bch_asert_cw144 %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_bch_asert_cw144,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+
+epoch_currency_bch_actual_bch_asert <-
+  epoch_currency_bch_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_cw144",
+      "actual")
+    )
+
+epoch_currency_bch_actual_bch_bsv_asert <-
+  epoch_currency_bch_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_asert",
+      "original_asert_cw144"
+      )
+    )
+
+epoch_currency_bch_actual_bch_all_asert <-
+  epoch_currency_bch_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "asert_asert_asert",
+      "cw144_asert_asert"
+      )
+    )
+
+epoch_currency_bch_bch_use_asert_daa <-
+  epoch_currency_bch_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "actual",
+      "asert_asert_cw144"
+      )
+    )
+
+
+```
+
+```{r}
+#own 
+plot_around_halving(
+    epoch_currency_bch_actual_bch_asert,
+    target = "BCH",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+```{r}
+#cross on BSV
+plot_around_halving(
+    epoch_currency_bch_actual_bch_asert,
+    target = "BSV",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+
+```{r}
+#cross on BTC
+plot_around_halving(
+    epoch_currency_bch_actual_bch_asert,
+    target = "BTC",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+#### BSV
+
+```{r}
+#own
+plot_around_halving(
+    epoch_currency_bch_actual_bch_bsv_asert,
+    target = "BSV",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BCH
+plot_around_halving(
+    epoch_currency_bch_actual_bch_bsv_asert,
+    target = "BCH",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BTC
+plot_around_halving(
+    epoch_currency_bch_actual_bch_bsv_asert,
+    target = "BTC",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### BTC
+
+```{r}
+#own
+plot_around_halving(
+    epoch_currency_bch_actual_bch_all_asert,
+    target = "BTC",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"
+      ),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BCH
+plot_around_halving(
+    epoch_currency_bch_actual_bch_all_asert,
+    target = "BCH",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"
+      ),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BSV
+plot_around_halving(
+    epoch_currency_bch_actual_bch_all_asert,
+    target = "BSV",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"
+      ),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### ASERT_ASERT_CW144
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_bch_use_asert_daa,
+    target = "BTC",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_bch_use_asert_daa,
+    target = "BCH",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_bch_use_asert_daa,
+    target = "BSV",
+    base = "BCH",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+### Compare daa regimes at the epoch level around BCH halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BCH"
+cutoff <- 630000
+
+datetime_cutoff_bch_actual <-
+  epoch_currency_simulated_bch_actual %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_bch_actual <-
+  epoch_currency_simulated_bch_actual %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_bch_actual,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_actual,
+    target = "BTC",
+    base = "BCH",
+    scenario = 4,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"),
+    linestyle = c(
+      "solid",
+      "solid", 
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_actual,
+    target = "BCH",
+    base = "BCH",
+    scenario = 4,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"),
+    linestyle = c(
+      "solid",
+      "solid", 
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  )  
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_actual,
+    target = "BSV",
+    base = "BCH",
+    scenario = 4,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"),
+    linestyle = c(
+      "solid",
+      "solid", 
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+### Compare asert daa regimes at the epoch level around BCH halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BCH"
+cutoff <- 630000
+
+datetime_cutoff_bch_asert <-
+  epoch_currency_simulated_bch_asert %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_bch_asert <-
+  epoch_currency_simulated_bch_asert %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_bch_asert,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_asert,
+    target = "BTC",
+    base = "BCH",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_asert,
+    target = "BCH",
+    base = "BCH",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  )
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_asert,
+    target = "BSV",
+    base = "BCH",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+
+### Compare daa regimes at the epoch level 96 paths around BCH halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BCH"
+cutoff <- 630000
+
+epoch_currency_bch_actual_96 <-
+  epoch_currency_simulated_bch_actual_96 %>%
+  dplyr::filter(simulated) %>%
+  dplyr::mutate(datetime_relative = hour/24) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_actual_96,
+    target = "BTC",
+    base = "BCH",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_actual_96,
+    target = "BCH",
+    base = "BCH",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  )  
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_bch_actual_96,
+    target = "BSV",
+    base = "BCH",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+## Compare daa regimes at the epoch level around BSV halving {.tabset}
+
+### Compare CW-144 and ASERT at the epoch level around BSV halving {.tabset}
+
+#### BCH
+
+```{r}
+
+base <- "BSV"
+cutoff <- 630000
+
+datetime_cutoff_bsv_asert_cw144 <-
+  epoch_currency_simulated_bsv_asert_cw144 %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_bsv_asert_cw144 <-
+  epoch_currency_simulated_bsv_asert_cw144 %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_bsv_asert_cw144,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+
+epoch_currency_bsv_actual_bch_asert <-
+  epoch_currency_bsv_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_cw144",
+      "actual")
+    )
+
+epoch_currency_bsv_actual_bch_bsv_asert <-
+  epoch_currency_bsv_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "original_asert_asert",
+      "original_asert_cw144")
+    )
+
+epoch_currency_bsv_actual_bch_all_asert <-
+  epoch_currency_bsv_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "asert_asert_asert",
+      "cw144_asert_asert")
+    )
+
+epoch_currency_bsv_bch_use_asert_daa <-
+  epoch_currency_bsv_asert_cw144 %>% 
+  dplyr::filter(
+    setting %in% c(
+      "actual",
+      "asert_asert_cw144")
+    )
+
+
+```
+
+```{r}
+#own 
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_asert,
+    target = "BCH",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+```{r}
+#cross on BSV
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_asert,
+    target = "BSV",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+
+```{r}
+#cross on BTC
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_asert,
+    target = "BTC",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF", 
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid", 
+      "dashed", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+
+```
+
+#### BSV
+
+```{r}
+#own
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_bsv_asert,
+    target = "BSV",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BCH
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_bsv_asert,
+    target = "BCH",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BTC
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_bsv_asert,
+    target = "BTC",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "dashed",
+      "solid", 
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### BTC
+
+```{r}
+#own
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_all_asert,
+    target = "BTC",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"
+      ),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BCH
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_all_asert,
+    target = "BCH",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"
+      ),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+#cross on BSV
+plot_around_halving(
+    epoch_currency_bsv_actual_bch_all_asert,
+    target = "BSV",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#9FDA3AFF",
+      "#277F8EFF"
+      ),
+    palette_ideal = c(
+      "#9FDA3AFF",
+      "#277F8EFF",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+#### ASERT_ASERT_CW144
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_bch_use_asert_daa,
+    target = "BTC",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "orange"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_bch_use_asert_daa,
+    target = "BCH",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_bch_use_asert_daa,
+    target = "BSV",
+    base = "BSV",
+    scenario = 2,
+    palette = c(
+      "#440154FF",
+      "#ff9933"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#ff9933",
+      "black"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "dashed"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+
+### Compare daa regimes at the epoch level around BSV halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BSV"
+cutoff <- 630000
+
+datetime_cutoff_bsv_actual <-
+  epoch_currency_simulated_bsv_actual %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_bsv_actual <-
+  epoch_currency_simulated_bsv_actual %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_bsv_actual,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_actual,
+    target = "BTC",
+    base = "BSV",
+    scenario = 4,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid", 
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_actual,
+    target = "BCH",
+    base = "BSV",
+    scenario = 4,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid", 
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_actual,
+    target = "BSV",
+    base = "BSV",
+    scenario = 4,
+    palette = c(
+      "#440154FF",
+      "#21908CFF",
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#21908CFF",
+      "black", 
+      "#FDE725FF",
+      "#3B528BFF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid", 
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  )  
+```
+
+### Compare asert daa regimes at the epoch level around BSV halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BSV"
+cutoff <- 630000
+
+datetime_cutoff_bsv_asert <-
+  epoch_currency_simulated_bsv_asert %>%
+  dplyr::filter(currency == base) %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(blockheight == cutoff) %>%
+  dplyr::select(setting, datetime) %>%
+  dplyr::rename(datetime_cutoff = datetime)
+
+epoch_currency_bsv_asert <-
+  epoch_currency_simulated_bsv_asert %>%
+  dplyr::filter(simulated) %>%
+  dplyr::left_join(
+    datetime_cutoff_bsv_asert,
+    by = "setting"
+  ) %>%
+  dplyr::mutate(datetime_relative = difftime(datetime, datetime_cutoff, unit = "days")) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_asert,
+    target = "BTC",
+    base = "BSV",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_asert,
+    target = "BCH",
+    base = "BSV",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  )
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_asert,
+    target = "BSV",
+    base = "BSV",
+    scenario = 5,
+    palette = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF", 
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "#9FDA3AFF",
+      "#ff9933",
+      "#277F8EFF",
+      "black",
+      "#440154FF",
+      "#5DC863FF"
+      ),
+    linestyle = c(
+      "solid",
+      "solid",
+      "solid",
+      "solid",
+      "dashed", 
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+
+### Compare daa regimes at the epoch level 96 paths around BSV halving {.tabset}
+
+#### BTC
+
+```{r}
+
+base <- "BSV"
+cutoff <- 630000
+
+epoch_currency_bsv_actual_96 <-
+  epoch_currency_simulated_bsv_actual_96 %>%
+  dplyr::filter(simulated) %>%
+  dplyr::mutate(datetime_relative = hour/24) %>%
+  dplyr::filter(abs(datetime_relative) < 60)
+```
+
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_actual_96,
+    target = "BTC",
+    base = "BSV",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 1
+  ) 
+```
+
+#### BCH
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_actual_96,
+    target = "BCH",
+    base = "BSV",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  ) 
+```
+
+#### BSV
+
+```{r}
+plot_around_halving(
+    epoch_currency_bsv_actual_96,
+    target = "BSV",
+    base = "BSV",
+    scenario = 3,
+    palette = c(
+      "#440154FF",
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    palette_ideal = c(
+      "#440154FF",
+      "black", 
+      "#FDE725FF",
+      "#21908CFF"
+      ),
+    linestyle = c(
+      "solid",
+      "dashed",
+      "solid",
+      "solid"
+      ),
+    fontsize = 8,
+    colorsize = 5,
+    linesize = 1,
+    nrow = 2
+  )  
+```
+

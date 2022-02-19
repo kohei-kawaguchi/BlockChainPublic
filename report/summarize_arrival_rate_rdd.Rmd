@@ -1,0 +1,698 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+# initialize --------------------------------------------------------------
+
+library(BlockChain)
+library(magrittr)
+library(foreach)
+library(modelsummary)
+library(ggplot2)
+library(rdmulti)
+library(knitr)
+library(kableExtra)
+```
+
+```{r}
+# read data ---------------------------------------------------------------
+
+currency_week_hashrate <- readRDS(file = here::here("cleaned/currency_week_hashrate.rds"))
+currency_algo_date <- readRDS(file = here::here("output/currency_algo_date.rds"))
+asic_spec_top <- readRDS(file = here::here("output/asic_spec_top.rds"))
+epoch_currency <- readRDS(file = here::here("output/epoch_currency_sha256.rds"))
+```
+
+```{r}
+# set color
+colour_palette <- 
+  list(
+    "btc" = "#F7931A",
+    "bch" = "#0AC18E",
+    "bsv" = "#00368C"
+  )
+
+# Set cutoff date
+cutoff_date <- epoch_currency %>% 
+  dplyr::group_by(currency) %>% 
+  dplyr::filter(blockheight == 630000) %>% 
+  dplyr::summarize(cutoff_date = datetime[epoch == min(epoch)])
+
+kable(cutoff_date)
+```
+
+
+
+# RDD around the reward change {.tabset}
+
+## Reward change around BTC halving (esmv) {.tabset}
+
+### Effects on BTC
+
+```{r, results = "asis"}
+target <- "BTC"
+base <- "BTC"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-05-11 19:23:43"),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-05-11 19:23:43"),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- "blank"
+linetype_s <- "solid"
+target_before <- "BSV"
+target_after <- "BCH" 
+
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$btc,
+    target_before,
+    target_after,
+    target_line = FALSE
+  )
+output_btc_on_btc <- output
+```
+
+### Effects on BCH
+
+```{r, results = "asis"}
+target <- "BCH"
+base <- "BTC"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2 
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-05-11 19:23:43"),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-05-11 19:23:43"),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- "blank"
+linetype_s <- "solid"
+target_before <- "BSV"
+target_after <- "BCH" 
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$bch,
+    target_before,
+    target_after,
+    target_line = FALSE
+  )
+output_btc_on_bch <- output
+```
+
+
+### Effects on BSV
+
+```{r, results = "asis"}
+target <- "BSV"
+base <- "BTC"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-05-11 19:23:43"),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-05-11 19:23:43"),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- "blank"
+linetype_s <- "solid"
+target_before <- "BSV"
+target_after <- "BCH" 
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$bsv,
+    target_before,
+    target_after,
+    target_line = FALSE
+  )
+output_btc_on_bsv <- output
+```
+
+
+### Export {.tabset}
+
+```{r}
+path <- "figuretable/summarize_arrival_rate_rdd"
+figure_list <-
+    list(
+      btc_on_btc = output_btc_on_btc$figure,
+      btc_on_bch = output_btc_on_bch$figure,
+      btc_on_bsv = output_btc_on_bsv$figure
+    )   
+foreach (i = 1:length(figure_list)) %do% {
+  name_i <- names(figure_list)[i]
+  figure_i <- figure_list[[i]]
+  foreach (j = 1:length(figure_i)) %do% {
+    name_ij <- names(figure_i)[j]
+    figure_ij <- figure_i[[j]]
+    savename_ij <- 
+      paste0(path, "/rdd_reward_change_for_", name_i, "_", name_ij, ".png")
+    figure_ij %>%
+      ggsave(
+        filename = here::here(savename_ij),
+        width = 4,
+        height = 3
+      )
+  }
+}
+```
+
+```{r, results = "asis"}
+result_list <-
+    list(
+      BTC = output_btc_on_btc$result,
+      BCH = output_btc_on_bch$result,
+      BSV = output_btc_on_bsv$result
+    ) 
+savename <- "figuretable/summarize_arrival_rate_rdd/effect_btc_halving.tex"
+make_table_rdd(
+    result_list,
+    savename
+  )
+```
+
+
+
+## Reward change around BCH halving (esmv) {.tabset}
+
+### Effects on BTC
+
+```{r, results = "asis"}
+target <- "BTC"
+base <- "BCH"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- c("blank",
+                "dashed"
+                )
+linetype_s <- c("solid",
+                "dashed"
+                )
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$btc,
+    target_before = "BSV",
+    target_after = "BCH",
+    target_line = TRUE
+  )
+output_bch_on_btc <- output
+
+```
+
+
+### Effects on BCH
+```{r, results = "asis"}
+target <- "BCH"
+base <- "BCH"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- c("blank",
+                "dashed"
+                )
+linetype_s <- c("solid",
+                "dashed"
+                )
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$bch,
+    target_before,
+    target_after,
+    target_before = "BSV",
+    target_after = "BCH",
+    target_line = TRUE
+  )
+output_bch_on_bch <- output
+```
+
+### Effects on BSV
+```{r, results = "asis"}
+target <- "BSV"
+base <- "BCH"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- c("blank",
+                "dashed"
+                )
+linetype_s <- c("solid",
+                "dashed"
+                )
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$bsv,
+    target_before,
+    target_after,
+    target_before = "BSV",
+    target_after = "BCH",
+    target_line = TRUE
+  )
+output_bch_on_bsv <- output
+
+```
+
+
+### Export {.tabset}
+
+```{r}
+path <- "figuretable/summarize_arrival_rate_rdd"
+figure_list <-
+    list(
+      bch_on_btc = output_bch_on_btc$figure,
+      bch_on_bch = output_bch_on_bch$figure,
+      bch_on_bsv = output_bch_on_bsv$figure
+    )   
+foreach (i = 1:length(figure_list)) %do% {
+  name_i <- names(figure_list)[i]
+  figure_i <- figure_list[[i]]
+  foreach (j = 1:length(figure_i)) %do% {
+    name_ij <- names(figure_i)[j]
+    figure_ij <- figure_i[[j]]
+    savename_ij <- 
+      paste0(path, "/rdd_reward_change_for_", name_i, "_", name_ij, ".png")
+    figure_ij %>%
+      ggsave(
+        filename = here::here(savename_ij),
+        width = 4,
+        height = 3
+      )
+  }
+}
+```
+
+```{r, results = "asis"}
+result_list <-
+    list(
+      BTC = output_bch_on_btc$result,
+      BCH = output_bch_on_bch$result,
+      BSV = output_bch_on_bsv$result
+    ) 
+savename <- "figuretable/summarize_arrival_rate_rdd/effect_bch_halving.tex"
+make_table_rdd(
+    result_list,
+    savename
+  )
+```
+
+
+
+## Reward change around BSV halving (esmv) {.tabset}
+
+### Effects on BTC
+```{r, results = "asis"}
+target <- "BTC"
+base <- "BSV"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- c("dashed",
+                "blank"
+                )
+linetype_s <- c("dashed",
+                "solid"
+                )
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$btc,
+    target_before,
+    target_after,
+    target_before = "BSV",
+    target_after = "BCH",
+    target_line = TRUE
+  )
+output_bsv_on_btc <- output
+
+```
+
+### Effects on BCH
+```{r, results = "asis"}
+target <- "BCH"
+base <- "BSV"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- c("dashed",
+                "blank"
+                )
+linetype_s <- c("dashed",
+                "solid"
+                )
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$bch,
+    target_before,
+    target_after,
+    target_before = "BSV",
+    target_after = "BCH",
+    target_line = TRUE
+  )
+output_bsv_on_bch <- output
+```
+
+
+### Effects on BSV
+```{r, results = "asis"}
+target <- "BSV"
+base <- "BSV"
+cutoff <- 630000
+h <- 3600 * 24 * 28
+h_short <- 3600 * 24 * 2
+original <- TRUE
+binselect <- "esmv"
+p <- 4
+halving_line_s <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+halving_line_l <- as.POSIXct(
+  c("2020-04-08 12:19:24",
+    "2020-04-10 00:48:30"
+    ),
+  origin = "1970-01-01",
+  tz = "UTC"
+  ) %>% 
+  as.numeric()
+linetype_l <- c("dashed",
+                "blank"
+                )
+linetype_s <- c("dashed",
+                "solid"
+                )
+
+output <- 
+  perform_rdd_reward_change(
+    epoch_currency,
+    target,
+    base,
+    cutoff,
+    h,
+    h_short,
+    original,
+    binselect,
+    p,
+    halving_line_l,
+    halving_line_s,
+    linetype_l,
+    linetype_s,
+    palette = colour_palette$bsv,
+    target_before,
+    target_after,
+    target_before = "BSV",
+    target_after = "BCH",
+    target_line = TRUE
+  )
+output_bsv_on_bsv <- output
+```
+
+### Export {.tabset}
+
+```{r}
+path <- "figuretable/summarize_arrival_rate_rdd"
+figure_list <-
+    list(
+      bsv_on_btc = output_bsv_on_btc$figure,
+      bsv_on_bch = output_bsv_on_bch$figure,
+      bsv_on_bsv = output_bsv_on_bsv$figure
+    )   
+foreach (i = 1:length(figure_list)) %do% {
+  name_i <- names(figure_list)[i]
+  figure_i <- figure_list[[i]]
+  foreach (j = 1:length(figure_i)) %do% {
+    name_ij <- names(figure_i)[j]
+    figure_ij <- figure_i[[j]]
+    savename_ij <- 
+      paste0(path, "/rdd_reward_change_for_", name_i, "_", name_ij, ".png")
+    figure_ij %>%
+      ggsave(
+        filename = here::here(savename_ij),
+        width = 4,
+        height = 3
+      )
+  }
+}
+```
+
+```{r, results = "asis"}
+result_list <-
+    list(
+      BTC = output_bsv_on_btc$result,
+      BCH = output_bsv_on_bch$result,
+      BSV = output_bsv_on_bsv$result
+    ) 
+savename <- "figuretable/summarize_arrival_rate_rdd/effect_bsv_halving.tex"
+make_table_rdd(
+    result_list,
+    savename
+  )
+```

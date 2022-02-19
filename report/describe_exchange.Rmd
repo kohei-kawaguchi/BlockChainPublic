@@ -1,0 +1,577 @@
+---
+title: "Describe exchange rate and volume"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+```{r}
+library(BlockChain)
+library(foreach)
+library(magrittr)
+library(doParallel)
+library(ggpubr)
+library(kableExtra)
+```
+
+
+```{r}
+# --------- #
+# load data
+# --------- #
+rate <- readRDS(file = here::here("cleaned/currency_rate_date_yahoo.rds"))
+rate_estimate <- readRDS(file = here::here("output/rate_estimate.rds"))
+```
+
+```{r}
+colour_palette <- 
+  c(
+    "BTC" = "#F7931A",
+    "BCH" = "#0AC18E",
+    "BSV" = "#00368C"
+  )
+```
+
+
+# Level {.tabset}
+
+```{r}
+exogenous_process <-
+  rate %>%
+  dplyr::filter(
+    currency == "BTC" |
+      currency == "BCH" |
+      currency == "BSV"
+  ) %>%
+  dplyr::arrange(currency, date) %>%
+  dplyr::group_by(currency) %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = c(rate_quoteusd, volume),
+      .fns = ~ . - dplyr::lag(.)
+    )
+  ) %>%
+  dplyr::filter(is.finite(rate_quoteusd), is.finite(volume)) %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = c(rate_quoteusd, volume),
+      .fns = ~ (. - mean(.)) / sd(.)
+    )
+  ) %>%
+  dplyr::ungroup()
+   
+```
+
+
+## Normal distribution {.tabset}
+
+
+### Exchange rate {.tabset}
+
+
+```{r}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        sample = rate_quoteusd
+        )
+      ) +
+      geom_qq() +
+      geom_qq_line() +
+      theme_classic()
+  )
+```
+
+```{r, results = "asis"}
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+### Transaction volume {.tabset}
+
+
+```{r}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        sample = volume
+        )
+      ) +
+      geom_qq() +
+      geom_qq_line() +
+      theme_classic()
+  )
+```
+
+```{r, results = "asis"}
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+## t distribution {.tabset}
+
+
+### Exchange rate {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$rate_quoteusd,
+      distr = "t",
+      start = list(df = 2),
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+### Transaction volume {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$volume,
+      distr = "t",
+      start = list(df = 2),
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+## Cauchy distribution {.tabset}
+
+
+### Exchange rate {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$rate_quoteusd,
+      distr = "cauchy",
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+### Transaction volume {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$volume,
+      distr = "cauchy",
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+# Log {.tabset}
+
+```{r}
+exogenous_process <-
+  rate %>%
+  dplyr::filter(
+    currency == "BTC" |
+      currency == "BCH" |
+      currency == "BSV"
+  ) %>%
+  dplyr::arrange(currency, date) %>%
+  dplyr::group_by(currency) %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = c(rate_quoteusd, volume),
+      .fns = ~ log(.)
+    )
+  ) %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = c(rate_quoteusd, volume),
+      .fns = ~ . - dplyr::lag(.)
+    )
+  ) %>%
+  dplyr::filter(is.finite(rate_quoteusd), is.finite(volume)) %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = c(rate_quoteusd, volume),
+      .fns = ~ (. - mean(.)) / sd(.)
+    )
+  ) %>%
+  dplyr::ungroup()
+   
+```
+
+
+## Normal distribution {.tabset}
+
+
+### Exchange rate {.tabset}
+
+
+```{r}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        sample = rate_quoteusd
+        )
+      ) +
+      geom_qq() +
+      geom_qq_line() +
+      theme_classic()
+  )
+```
+
+```{r, results = "asis"}
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+### Transaction volume {.tabset}
+
+
+```{r}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        sample = volume
+        )
+      ) +
+      geom_qq() +
+      geom_qq_line() +
+      theme_classic()
+  )
+```
+
+```{r, results = "asis"}
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+## t distribution {.tabset}
+
+
+### Exchange rate {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$rate_quoteusd,
+      distr = "t",
+      start = list(df = 10),
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+### Transaction volume {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$volume,
+      distr = "t",
+      start = list(df = 10),
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+## Cauchy distribution {.tabset}
+
+
+### Exchange rate {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$rate_quoteusd,
+      distr = "cauchy",
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+
+### Transaction volume {.tabset}
+
+
+```{r, results = "asis"}
+p <-
+  exogenous_process %>%
+  dplyr::group_split(currency) %>%
+  purrr::map(
+    .,
+    ~ fitdistrplus::fitdist(
+      data = .$volume,
+      distr = "cauchy",
+      method = "mle"
+      ) %>%
+      fitdistrplus::qqcomp(
+        .,
+        plotstyle = "ggplot",
+        xlim = c(-5, 5)
+      ) +
+      theme_classic()
+  )
+# draw time series 
+currency_list <-
+  unique(exogenous_process$currency)
+for (i in 1:length(p)) {
+  cat("\n\n")
+  cat("####", currency_list[i], "\n\n")
+  print(p[[i]])
+  cat("\n\n")
+}
+```
+
+# Estimation results
+
+## Estimated exchang rate
+
+```{r}
+rate_estimate_sha256 <-
+  dplyr::bind_rows(
+    rate_estimate %>%
+    dplyr::filter(currency == "BTC"),
+  rate_estimate %>%
+    dplyr::filter(currency == "BCH"),
+  rate_estimate %>%
+    dplyr::filter(currency == "BSV")
+  ) %>%
+  dplyr::select(
+    currency,
+    rate_quoteusd_mean,
+    rate_quoteusd_sd,
+    rate_quoteusd_df
+  )
+rate_estimate_sha256 %>%
+  magrittr::set_colnames(c("Curency", "Mean", "Sd", "Df")) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 4, format = "f")
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("r", 3))
+  ) %>%
+  kable_styling()
+```
+
+# Export
+
+```{r}
+rate_estimate_sha256 %>%
+  magrittr::set_colnames(c("Curency", "Mean", "Sd", "Df")) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 4, format = "f")
+  ) %>%
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("r", 3)),
+    format = "latex",
+    linesep = ""
+  ) %>%
+  save_kable(
+    file = here::here("figuretable/describe_exchange/rate_estimate.tex")
+  )
+```
+

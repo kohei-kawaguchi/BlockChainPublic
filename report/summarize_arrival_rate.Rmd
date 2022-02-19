@@ -1,0 +1,163 @@
+---
+title: "Summarize arrival rate"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, echo = FALSE)
+library(BlockChain)
+library(magrittr)
+library(foreach)
+library(modelsummary)
+library(kableExtra)
+library(maxLik)
+```
+
+# Load data
+
+```{r}
+result_list_all <-
+  list.files(
+    path = here::here("output"),
+    pattern = "estimate_arrival_rate.*modelsummary",
+    full.names = TRUE
+  ) 
+result_list_all <-
+  result_list_all %>%
+  purrr::map(readRDS) %>%
+  magrittr::set_names(result_list_all)
+names(result_list_all) <-
+  names(result_list_all) %>%
+  gsub(".*arrival_rate_", "", .) %>%
+  gsub("_modelsummary.*", "", .)
+
+result_list_after_bsv_local <- readRDS(file = here::here("output/estimate_arrival_rate_after_bsv_local.rds"))
+```
+
+# Show the results {.tabset}
+
+## Use all data {.tabset}
+
+```{r, results = "asis"}
+result_list_sub <-
+  result_list_all[
+    !grepl("local", names(result_list_all))
+    & !grepl("month", names(result_list_all))
+  ]
+for (i in 1:length(result_list_sub)) {
+  cat("###", names(result_list_sub)[i], "\n\n")
+  result_list_sub[[i]] %>% print()
+  cat("\n\n")
+}
+```
+
+
+## Use near the reward change {.tabset}
+
+```{r, results = "asis"}
+result_list_sub <-
+  result_list_all[grepl("local", names(result_list_all))]
+for (i in 1:length(result_list_sub)) {
+  cat("###", names(result_list_sub)[i], "\n\n")
+  result_list_sub[[i]] %>% print()
+  cat("\n\n")
+}
+```
+
+## Estimate by month {.tabset}
+
+```{r, results = "asis"}
+result_list_sub <-
+  result_list_all[grepl("month", names(result_list_all))]
+for (i in 1:length(result_list_sub)) {
+  cat("###", names(result_list_sub)[i], "\n\n")
+  result_list_sub[[i]] %>% print()
+  cat("\n\n")
+}
+```
+
+# Export
+
+```{r}
+result_benchmark <-  result_list_after_bsv_local$mle_list[[1]]
+epoch_range <- result_list_after_bsv_local$epoch_range
+size <- epoch_range["end"] - epoch_range["start"]
+
+estimate <- coef(result_benchmark)
+se <- stdEr(result_benchmark)
+
+result_table <-
+  tibble::tibble(
+    term = estimate %>% names(),
+    estimate = estimate,
+    std.error = se
+  ) %>%
+  dplyr::mutate_if(
+    is.numeric,
+    ~ formatC(., digit = 3)
+  ) %>%
+  dplyr::mutate(
+    std.error = paste0("(", std.error, ")")
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(estimate, std.error)
+  ) %>%
+  dplyr::mutate(
+    currency = 
+      gsub("_log.*", "", term) %>%
+      gsub("currency_", "", .),
+    variable =
+      gsub("currency_.*_log", "log", term) %>%
+      gsub("currency.*", "intercept", .)
+  ) %>%
+  dplyr::select(
+    currency,
+    variable,
+    value,
+    name
+  ) %>%
+  tidyr::pivot_wider(
+    id_cols = c(variable, name),
+    names_from = currency
+  ) %>%
+  dplyr::mutate(
+    variable = ifelse(name == "std.error", "", variable)
+  ) %>%
+  dplyr::select(-name) %>%
+  dplyr::select(variable, BTC, BCH, BSV) %>%
+  dplyr::mutate(
+    variable = 
+      gsub("log_reward_quoteusd_expected_", "log of expected reward of ", variable) %>%
+      Hmisc::capitalize()
+  ) %>%
+  magrittr::set_colnames(
+    c(
+      colnames(.) %>%
+        Hmisc::capitalize()
+      )
+  )
+colnames(result_table)[1] <- paste0("Num epoch = ", size)
+result_table %>%  
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("c", ncol(result_table) - 1))
+  ) %>%
+  add_header_above(c(" " = 1, "Log of hash rate" = 3)) %>%
+  kable_styling()
+
+savename <- "figuretable/summarize_arrival_rate/hash_supply_benchmark.tex"
+result_table %>%  
+  kbl(
+    booktabs = TRUE,
+    align = c("l", rep("c", ncol(result_table) - 1)),
+    format = "latex",
+    linesep = ""
+  ) %>%
+  add_header_above(c(" " = 1, "Log of hash rate" = 3)) %>%
+  save_kable(
+    file = here::here(savename)
+  )
+```
+

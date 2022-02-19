@@ -1,0 +1,254 @@
+---
+title: "Describe the Behaviors of the Simulator"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(BlockChain)
+library(ggplot2)
+library(kableExtra)
+library(modelsummary)
+library(magrittr)
+library(foreach)
+library(reticulate)
+```
+
+```{r}
+# import python module ----------------------------------------------------
+if (!("py3.8" %in% conda_list()$name)) {
+  # set up python environment and install pyblp
+  conda_create("py3.8")
+  conda_install(
+    envname = "py3.8",
+    pip = TRUE
+  )
+} else {
+  # load conda environment and load pyublp
+  use_condaenv("py3.8", required = TRUE)
+  asert <- 
+    import_from_path(
+      module = "asert",
+      path = here::here("module")
+    )
+}
+```
+
+
+# Load data
+
+```{r}
+epoch_currency <- readRDS(file = here::here("output/epoch_currency_sha256.rds"))
+```
+
+
+
+```{r}
+epoch_currency %>%
+  dplyr::group_by(currency) %>%
+  dplyr:::summarise(epoch = min(epoch)) %>%
+  dplyr::ungroup()
+
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(
+    epoch >= 150000,
+    epoch <= 350000
+    ) %>%
+  dplyr::arrange(epoch, currency, algo)
+```
+
+
+# Check the difficulty adjustment algorithm {.tabset}
+
+```{r}
+# set daa 
+daa <-
+  list(
+    "BTC" = update_winning_rate_btc_actual,
+    "BCH" = update_winning_rate_bch_actual,
+    "BSV" = update_winning_rate_bsv_actual
+  )
+
+# set emergency daa date
+emergency_daa_end <- as.POSIXct(1510600000, origin = "1970-01-01", tz = "UTC")
+
+# set asert daa date
+blockheight_asert <- 661647
+blockheight_anchor <- blockheight_asert 
+bits_anchor <- 
+  epoch_currency %>%
+  dplyr::filter(currency == "BCH") %>%
+  dplyr::filter(blockheight == blockheight_anchor) %>%
+  dplyr::filter(datetime == min(datetime)) %>%
+  dplyr::pull(bits) %>%
+  strtoi(., base = 16)
+datetime_anchor <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BCH") %>%
+  dplyr::filter(blockheight == blockheight_anchor - 1) %>%
+  dplyr::filter(datetime == min(datetime)) %>%
+  dplyr::pull(datetime) %>%
+  as.numeric()
+```
+
+
+## BTC {.tabset}
+
+```{r}
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BTC") %>%
+  dplyr::filter(generated)
+
+target <-
+  epoch_currency_sub %>%
+  dplyr::filter(mod(blockheight, 2016) == 0) %>%
+  dplyr::filter(blockheight == min(blockheight) + 2 * 2016) %>%
+  dplyr::pull(blockheight)
+
+epoch_currency_sub <-
+  epoch_currency_sub %>%
+  dplyr::filter(blockheight >= target - 1) %>%
+  dplyr::filter(blockheight <= target + 2016 * 10)
+
+
+p <- plot_winning_rate_fit(epoch_currency_sub) 
+```
+
+### All
+
+```{r, results = "asis"}
+p$all
+```
+
+### When adjusted
+
+```{r, results = "asis"}
+p$changed
+```
+
+
+## BCH {.tabset}
+
+### During BTC + emergency DAA {.tabset}
+
+```{r}
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BCH") %>%
+  dplyr::filter(generated)
+
+epoch_currency_sub <-
+  epoch_currency_sub %>%
+  dplyr::filter(datetime < emergency_daa_end) %>%
+  dplyr::filter(blockheight < min(blockheight) + 3 * 2016) 
+
+# make a plot
+p <- plot_winning_rate_fit(epoch_currency_sub) 
+```
+
+#### All
+
+```{r, results = "asis"}
+p$all
+```
+
+#### When adjusted
+
+```{r, results = "asis"}
+p$changed
+```
+
+
+
+### During BCH DAA {.tabset}
+
+#### All
+
+```{r}
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BCH") %>%
+  dplyr::filter(generated)
+
+epoch_currency_sub <-
+  epoch_currency_sub %>%
+  dplyr::filter(datetime > emergency_daa_end) %>%
+  dplyr::filter(blockheight < min(blockheight) + 100) 
+
+# make a plot
+p <- plot_winning_rate_fit(epoch_currency_sub) 
+```
+
+```{r, results = "asis"}
+p$all
+```
+
+#### datetime > emergency_daa_end + 3600 * 24
+
+```{r}
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BCH") %>%
+  dplyr::filter(generated)
+
+epoch_currency_sub <-
+  epoch_currency_sub %>%
+  dplyr::filter(datetime > emergency_daa_end + 3600 * 24) %>%
+  dplyr::filter(blockheight < min(blockheight) + 100) 
+
+# make a plot
+p <- plot_winning_rate_fit(epoch_currency_sub) 
+```
+
+```{r, results = "asis"}
+p$all
+```
+
+### After ASERT {.tabset}
+
+
+```{r}
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BCH") %>%
+  dplyr::filter(generated)
+
+epoch_currency_sub <-
+  epoch_currency_sub %>%
+  dplyr::filter(blockheight >= blockheight_asert) %>%
+  dplyr::filter(blockheight < min(blockheight) + 100) 
+
+# make a plot
+p <- plot_winning_rate_fit(epoch_currency_sub) 
+```
+
+```{r, results = "asis"}
+p$all
+```
+
+
+## BSV {.tabset}
+
+```{r}
+epoch_currency_sub <-
+  epoch_currency %>%
+  dplyr::filter(currency == "BSV") %>%
+  dplyr::filter(generated) %>%
+  dplyr::filter(
+    blockheight >= min(blockheight),
+    blockheight <= min(blockheight) + 100
+    )
+
+
+p <- plot_winning_rate_fit(epoch_currency_sub) 
+```
+
+### All
+
+```{r, results = "asis"}
+p$all
+```
+

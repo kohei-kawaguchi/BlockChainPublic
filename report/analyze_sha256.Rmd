@@ -1,0 +1,1599 @@
+---
+title: "Analayze sha256 Estimation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(BlockChain)
+library(ggplot2)
+library(kableExtra)
+library(modelsummary)
+library(magrittr)
+library(foreach)
+```
+
+# Load data
+
+```{r}
+currency_week_hashrate <- readRDS(file = "../cleaned/currency_week_hashrate.rds")
+currency_algo_date <- readRDS(file = "../output/currency_algo_date.rds")
+asic_spec_top <- readRDS(file = here::here("output/asic_spec_top.rds"))
+epoch_currency <- readRDS(file = here::here("output/epoch_currency_sha256.rds"))
+```
+
+```{r}
+# load data
+model_sha256_xi_war <- readRDS(file = here::here("output/model_sha256_xi_war.rds"))
+model_sha256_xi_war_liquidity <- readRDS(file = here::here("output/model_sha256_xi_war_liquidity.rds"))
+model_mle_sha256_xi_war_liquidity <- readRDS(file = here::here("output/model_mle_sha256_xi_war_liquidity.rds"))
+```
+
+# Set constant
+
+```{r}
+colour_palette <- 
+  c(
+    "BTC" = "#F7931A",
+    "BCH" = "#0AC18E",
+    "BSV" = "#00368C"
+  )
+```
+
+
+# Transform data
+
+```{r}
+asic_date <-
+  asic_spec_top %>%
+  dplyr::mutate(date = release) %>%
+  dplyr::group_by(model) %>%
+  tidyr::complete(model, date = seq(min(date), as.Date("2020-12-31"), by = 1)) %>%
+  tidyr::fill(algo, release, hash_rate_spec, power, .direction = "down") %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(release)
+```
+
+
+# Analyze data 
+
+## Calculate block generation probabiolity elasticity {.tabset}
+
+```{r}
+algo_epoch_variables <-
+  epoch_currency %>%
+  dplyr::filter(algo == "sha256") %>%
+  tidyr::pivot_wider(
+    id_cols = epoch,
+    names_from = currency,
+    values_from = c(winning_rate, rate_quoteusd, volume)
+  ) 
+algo_epoch_variables <-
+  epoch_currency %>%
+  dplyr::filter(algo == "sha256") %>%
+  dplyr::select(epoch, currency, generated) %>%
+  dplyr::left_join(
+    algo_epoch_variables,
+    by = "epoch"
+  ) %>%
+  tidyr::drop_na() %>%
+  dplyr::arrange(currency, epoch)
+algo_epoch_variables <-
+  algo_epoch_variables %>%
+  dplyr::group_split(currency) 
+names(algo_epoch_variables) <-
+  algo_epoch_variables %>%
+  purrr::map(., ~ unique(.$currency)) %>%
+  purrr::reduce(c)
+```
+
+### generated {.tabset}
+
+#### Lag 1 {.tabset}
+
+```{r}
+regression <- 
+  list(
+    algo_epoch_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("generated ~", ., sep = " ") %>%
+      as.formula(),
+    algo_epoch_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("generated ~", ., sep = " ") %>%
+      as.formula(),
+    algo_epoch_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd"),
+        dplyr::starts_with("volume")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("generated ~", ., sep = " ") %>%
+      as.formula()
+  )
+
+result <-
+  foreach (i = 1:length(regression)) %do% {
+    result_i <-
+      foreach (j = 1:length(algo_epoch_variables)) %do% {
+        result_ij <-
+          lm(
+            data = algo_epoch_variables[[j]],
+            formula = regression[[i]]
+          )
+        return(result_ij)
+      }
+    names(result_i) <- names(algo_epoch_variables)
+    return(result_i)
+  }
+names(result) <- names(regression)
+```
+
+```{r, results = "asis"}
+for (i in 1:length(result)) {
+  cat("##### Specification", i, "\n\n")
+  result[[i]] %>%
+    modelsummary() %>%
+    print()
+  cat("\n\n")
+}
+```
+
+
+## Calculate hash supply elasticity {.tabset}
+
+```{r}
+algo_date_variables <-
+  currency_algo_date %>%
+  dplyr::filter(algo == "sha256") %>%
+  tidyr::pivot_wider(
+    id_cols = date,
+    names_from = currency,
+    values_from = c(winning_rate, rate_quoteusd, volume)
+  ) 
+algo_date_variables <-
+  currency_algo_date %>%
+  dplyr::filter(algo == "sha256") %>%
+  dplyr::select(date, currency, hash_rate) %>%
+  dplyr::left_join(
+    algo_date_variables,
+    by = "date"
+  ) %>%
+  tidyr::drop_na() %>%
+  dplyr::group_by(date) %>%
+  dplyr::mutate(hash_rate_share = hash_rate / sum(hash_rate)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(currency, date)
+algo_date_variables <-
+  algo_date_variables %>%
+  dplyr::group_split(currency) 
+names(algo_date_variables) <-
+  algo_date_variables %>%
+  purrr::map(., ~ unique(.$currency)) %>%
+  purrr::reduce(c)
+```
+
+### Hash rate {.tabset}
+
+#### Lag 0 {.tabset}
+
+```{r}
+regression <- 
+  list(
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate")
+        ) %>%
+      colnames() %>%
+      paste("log(", ., ")", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd")
+        ) %>%
+      colnames() %>%
+      paste("log(", ., ")", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd"),
+        dplyr::starts_with("volume")
+        ) %>%
+      colnames() %>%
+      paste("log(", ., ")", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula()
+  )
+
+
+  
+result <-
+  foreach (i = 1:length(regression)) %do% {
+    result_i <-
+      foreach (j = 1:length(algo_date_variables)) %do% {
+        result_ij <-
+          lm(
+            data = algo_date_variables[[j]],
+            formula = regression[[i]]
+          )
+        return(result_ij)
+      }
+    names(result_i) <- names(algo_date_variables)
+    return(result_i)
+  }
+names(result) <- names(regression)
+```
+
+```{r, results = "asis"}
+for (i in 1:length(result)) {
+  cat("##### Specification", i, "\n\n")
+  result[[i]] %>%
+    modelsummary() %>%
+    print()
+  cat("\n\n")
+}
+```
+
+#### Lag 1 {.tabset}
+
+
+```{r}
+regression <- 
+  list(
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd"),
+        dplyr::starts_with("volume")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula()
+  )
+
+
+  
+result <-
+  foreach (i = 1:length(regression)) %do% {
+    result_i <-
+      foreach (j = 1:length(algo_date_variables)) %do% {
+        result_ij <-
+          lm(
+            data = algo_date_variables[[j]],
+            formula = regression[[i]]
+          )
+        return(result_ij)
+      }
+    names(result_i) <- names(algo_date_variables)
+    return(result_i)
+  }
+names(result) <- names(regression)
+```
+
+```{r, results = "asis"}
+for (i in 1:length(result)) {
+  cat("##### Specification", i, "\n\n")
+  result[[i]] %>%
+    modelsummary() %>%
+    print()
+  cat("\n\n")
+}
+```
+
+### Hash share {.tabset}
+
+#### Lag 0 {.tabset}
+
+```{r}
+regression <- 
+  list(
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate")
+        ) %>%
+      colnames() %>%
+      paste("log(", ., ")", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd")
+        ) %>%
+      colnames() %>%
+      paste("log(", ., ")", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd"),
+        dplyr::starts_with("volume")
+        ) %>%
+      colnames() %>%
+      paste("log(", ., ")", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula()
+    
+  )
+
+
+  
+result <-
+  foreach (i = 1:length(regression)) %do% {
+    result_i <-
+      foreach (j = 1:length(algo_date_variables)) %do% {
+        result_ij <-
+          lm(
+            data = algo_date_variables[[j]],
+            formula = regression[[i]]
+          )
+        return(result_ij)
+      }
+    names(result_i) <- names(algo_date_variables)
+    return(result_i)
+  }
+names(result) <- names(regression)
+```
+
+```{r, results = "asis"}
+for (i in 1:length(result)) {
+  cat("##### Specification", i, "\n\n")
+  result[[i]] %>%
+    modelsummary() %>%
+    print()
+  cat("\n\n")
+}
+```
+
+#### Lag 1 {.tabset}
+
+
+```{r}
+regression <- 
+  list(
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula(),
+    algo_date_variables[[1]] %>%
+      dplyr::select(
+        dplyr::starts_with("winning_rate"),
+        dplyr::starts_with("rate_quoteusd"),
+        dplyr::starts_with("volume")
+        ) %>%
+      colnames() %>%
+      paste("dplyr::lag(log(", ., "), 1)", sep = "") %>%
+      paste(., collapse = " + ") %>%
+      paste("log(hash_rate_share) ~", ., sep = " ") %>%
+      as.formula()
+  )
+
+
+  
+result <-
+  foreach (i = 1:length(regression)) %do% {
+    result_i <-
+      foreach (j = 1:length(algo_date_variables)) %do% {
+        result_ij <-
+          lm(
+            data = algo_date_variables[[j]],
+            formula = regression[[i]]
+          )
+        return(result_ij)
+      }
+    names(result_i) <- names(algo_date_variables)
+    return(result_i)
+  }
+names(result) <- names(regression)
+```
+
+```{r, results = "asis"}
+for (i in 1:length(result)) {
+  cat("##### Specification", i, "\n\n")
+  result[[i]] %>%
+    modelsummary() %>%
+    print()
+  cat("\n\n")
+}
+```
+
+
+
+
+## Compare BTC/BCH/BSV {.tabset}
+
+### Daily {.tabset}
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_winning_rate = log(winning_rate)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_winning_rate,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  labs(
+    x = "Date",
+    y = "log(Winning rate)",
+    colour = ""
+  ) +
+  scale_colour_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_hash_rate = log(hash_rate)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_hash_rate,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "log of Hash rate (H/s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    reward_winning_rate = reward_quoteusd * winning_rate,
+    log_reward_winning_rate = log(reward_winning_rate)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_reward_winning_rate,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of reward (USD) x wining rate",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    log_block_time = log(block_time)
+  ) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_block_time,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of daily block time s.d. (s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_hash_rate_sd = log(hash_rate_sd)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_hash_rate_sd,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of daily hash rate s.d. (H/s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    log_block_time_sd = log(block_time_sd)
+  ) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_block_time_sd,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of daily block time s.d. (s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+### Daily 14-days moving average {.tabset}
+
+```{r}
+# make time series 
+winning_rate_figure <-
+  currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_winning_rate = log(winning_rate)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_winning_rate,
+      colour = currency
+    )
+  ) +
+  tidyquant::geom_ma(
+    n = 14,
+    linetype = "solid"
+    ) +
+  labs(
+    x = "Date",
+    y = "Log of winning rate",
+    colour = ""
+  ) +
+  scale_colour_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title=element_blank()
+  ) + 
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 5)
+      )
+    )
+
+legend <- ggpubr::get_legend(winning_rate_figure)
+winning_rate_figure_legend <- ggpubr::as_ggplot(legend)
+        
+winning_rate_figure <-
+  winning_rate_figure +
+  theme(
+    legend.position = "none"
+    )
+
+plot(winning_rate_figure)
+plot(winning_rate_figure_legend)
+```
+
+```{r}
+# make time series 
+hash_rate_figure <-
+  currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_hash_rate = log(hash_rate)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_hash_rate,
+      colour = currency
+    )
+  ) +
+  tidyquant::geom_ma(
+    n = 14,
+    linetype = "solid"
+    ) +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of hash rate (H/s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title=element_blank()
+  ) + 
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 5)
+      )
+    )
+
+legend <- ggpubr::get_legend(hash_rate_figure)
+hash_rate_figure_legend <- ggpubr::as_ggplot(legend)
+        
+hash_rate_figure <-
+  hash_rate_figure +
+  theme(
+    legend.position = "none"
+    )
+
+plot(hash_rate_figure)
+plot(hash_rate_figure_legend)
+```
+
+
+```{r}
+# make time series 
+expected_reward_figure <- 
+  currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    reward_winning_rate = reward_quoteusd * winning_rate,
+    log_reward_winning_rate = log(reward_winning_rate)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_reward_winning_rate,
+      colour = currency
+    )
+  ) +
+  tidyquant::geom_ma(
+    n = 14,
+    linetype = "solid"
+    ) +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of expected reward (USD)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title=element_blank()
+  ) + 
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 5)
+      )
+    )
+
+legend <- ggpubr::get_legend(expected_reward_figure)
+expected_reward_figure_legend <- ggpubr::as_ggplot(legend)
+        
+expected_reward_figure <-
+  expected_reward_figure +
+  theme(
+    legend.position = "none"
+    )
+
+plot(expected_reward_figure)
+plot(expected_reward_figure_legend)
+
+```
+
+```{r}
+# make time series 
+block_time_figure <-
+  currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    log_block_time = log(block_time)
+  ) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_block_time,
+      colour = currency
+    )
+  ) +
+  geom_hline(
+    yintercept = log(600),
+    linetype = "dotted"
+  ) +
+  tidyquant::geom_ma(
+    n = 14,
+    linetype = "solid"
+    ) +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of block time (s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title=element_blank()
+  ) + 
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 5)
+      )
+    )
+
+legend <- ggpubr::get_legend(block_time_figure)
+block_time_figure_legend <- ggpubr::as_ggplot(legend)
+        
+block_time_figure <-
+  block_time_figure +
+  theme(
+    legend.position = "none"
+    )
+
+plot(block_time_figure)
+plot(block_time_figure_legend)
+```
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_hash_rate_sd = log(hash_rate_sd)) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_hash_rate_sd,
+      colour = currency
+    )
+  ) +
+  tidyquant::geom_ma(
+    n = 14,
+    linetype = "solid"
+    ) +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Log of daily hash rate s.d. (H/s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_algo_date %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    log_block_time_sd = log(block_time_sd)
+  ) %>%
+  ggplot(
+    aes(
+      x = date,
+      y = log_block_time_sd,
+      colour = currency
+    )
+  ) +
+  tidyquant::geom_ma(
+    n = 14,
+    linetype = "solid"
+    ) +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Date",
+    y = "Daily average block time (s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  ) +
+  geom_hline(
+    yintercept = log(600), linetype = "dotted"
+  )
+```
+
+```{r}
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "winning_rate.png",
+       plot = winning_rate_figure, 
+       width = 4, 
+       height = 3
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "winning_rate_legend.png",
+       plot = winning_rate_figure_legend, 
+       width = 2, 
+       height = 0.4
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "hash_rate.png",
+       plot = hash_rate_figure, 
+       width = 4, 
+       height = 3
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "hash_rate_legend.png",
+       plot = hash_rate_figure_legend, 
+       width = 2, 
+       height = 0.4
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "expected_reward.png",
+       plot = expected_reward_figure, 
+       width = 4, 
+       height = 3
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "expected_reward_legend.png",
+       plot = expected_reward_figure_legend, 
+       width = 2, 
+       height = 0.4
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "block_time.png",
+       plot = block_time_figure, 
+       width = 4, 
+       height = 3
+       )
+
+ggsave(path = "../figuretable/analyze_sha256", 
+       filename = "block_time_legend.png",
+       plot = block_time_figure_legend, 
+       width = 2, 
+       height = 0.4
+       )
+```
+
+### Weekly {.tabset}
+
+```{r}
+# make time series 
+currency_week_hashrate %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_winning_rate = log(winning_rate)) %>%
+  ggplot(
+    aes(
+      x = week,
+      y = log_winning_rate,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  labs(
+    x = "Week",
+    y = "log(Winning rate)",
+    colour = ""
+  ) +
+  scale_colour_manual(values = colour_palette) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_week_hashrate %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_hash_rate = log(hash_rate)) %>%
+  ggplot(
+    aes(
+      x = week,
+      y = log_hash_rate,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Week",
+    y = "log of Hash rate (H/s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_week_hashrate %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    log_block_time = log(block_time)
+  ) %>%
+  ggplot(
+    aes(
+      x = week,
+      y = log_block_time,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Week",
+    y = "Log of weekly block time s.d. (s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_week_hashrate %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(log_hash_rate_sd = log(hash_rate_sd)) %>%
+  ggplot(
+    aes(
+      x = week,
+      y = log_hash_rate_sd,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Week",
+    y = "Log of weekly hash rate s.d. (H/s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+# make time series 
+currency_week_hashrate %>%
+  dplyr::filter(currency %in% c("BTC", "BCH", "BSV")) %>%
+  dplyr::mutate(
+    log_block_time_sd = log(block_time_sd)
+  ) %>%
+  ggplot(
+    aes(
+      x = week,
+      y = log_block_time_sd,
+      colour = currency
+    )
+  ) +
+  geom_line() +
+  scale_colour_manual(values = colour_palette) +
+  labs(
+    x = "Week",
+    y = "Log of weekly block time s.d. (s)",
+    colour = ""
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+# Analyze estimated model {.tabset}
+
+## Fit of the model {.tabset} 
+
+### xi and war
+
+```{r check fit xi war}
+graph <-
+  predict_hash(
+    model_sha256_xi_war$base_currency_algo_date, 
+    model_sha256_xi_war$parameters, 
+    model_sha256_xi_war$electricity_cost,
+    algo = "sha256"
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(hash_rate, hash_rate_predicted)
+  ) %>%
+  dplyr::group_split(currency, algo) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        x = date,
+        y = value,
+        colour = name,
+        line_type = name
+      )
+    ) +
+      geom_line() +
+      scale_colour_viridis_d() +
+      labs(
+        x = "Date",
+        y = "Hash rate (H/s)",
+        colour = .$currency %>% unique()
+      ) +
+      theme_classic() +
+      theme(
+        legend.position = "bottom"
+      )
+  )
+graph 
+```
+
+### xi, war, and liquidity
+
+```{r check fit xi war liquidity}
+graph <-
+  predict_hash(
+    model_sha256_xi_war_liquidity$base_currency_algo_date, 
+    model_sha256_xi_war_liquidity$parameters, 
+    model_sha256_xi_war_liquidity$electricity_cost,
+    algo = "sha256"
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(hash_rate, hash_rate_predicted)
+  ) %>%
+  dplyr::group_split(currency, algo) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        x = date,
+        y = value,
+        colour = name,
+        line_type = name
+      )
+    ) +
+      geom_line() +
+      scale_colour_viridis_d() +
+      labs(
+        x = "Date",
+        y = "Hash rate (H/s)",
+        colour = .$currency %>% unique()
+      ) +
+      theme_classic() +
+      theme(
+        legend.position = "bottom"
+      )
+  )
+graph 
+```
+
+### xi, war, and liquidity with MLE
+
+```{r check fit xi war liquidity mle}
+graph <-
+  predict_hash(
+    model_mle_sha256_xi_war_liquidity$base_currency_algo_date, 
+    model_mle_sha256_xi_war_liquidity$parameters, 
+    model_mle_sha256_xi_war_liquidity$electricity_cost,
+    algo = "sha256"
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(hash_rate, hash_rate_predicted)
+  ) %>%
+  dplyr::group_split(currency, algo) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        x = date,
+        y = value,
+        colour = name,
+        line_type = name
+      )
+    ) +
+      geom_line() +
+      scale_colour_viridis_d() +
+      labs(
+        x = "Date",
+        y = "Hash rate (H/s)",
+        colour = .$currency %>% unique()
+      ) +
+      theme_classic() +
+      theme(
+        legend.position = "bottom"
+      )
+  )
+graph 
+```
+
+## Fit of the model during the hash war {.tabset}
+
+### xi and war
+
+```{r check fit during the hash-war xi war}
+graph <-
+  predict_hash(
+    model_sha256_xi_war$base_currency_algo_date, 
+    model_sha256_xi_war$parameters, 
+    model_sha256_xi_war$electricity_cost,
+    algo = "sha256"
+  ) %>%
+  dplyr::filter(
+    date >= "2018-11-01",
+    date <= "2018-11-30"
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(hash_rate, hash_rate_predicted)
+  ) %>%
+  dplyr::group_split(currency, algo) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        x = date,
+        y = value,
+        colour = name,
+        line_type = name
+      )
+    ) +
+       geom_rect(
+        aes(
+          xmin = as.Date("2018-11-15"), 
+          xmax = as.Date("2018-11-26"), 
+          ymin = 0, 
+          ymax = Inf
+          ),
+        colour = NA,
+        fill = "grey",
+        alpha = 0.01
+       ) +
+      geom_line() +
+      scale_colour_viridis_d() +
+      labs(
+        x = "Date",
+        y = "Hash rate (H/s)",
+        colour = .$currency %>% unique()
+      ) +
+      theme_classic() +
+      theme(
+        legend.position = "bottom"
+      )
+  )
+graph 
+```
+
+### xi, war, and liquidity
+
+```{r check fit during the hash-war xi war liquidity}
+graph <-
+  predict_hash(
+    model_sha256_xi_war_liquidity$base_currency_algo_date, 
+    model_sha256_xi_war_liquidity$parameters, 
+    model_sha256_xi_war_liquidity$electricity_cost,
+    algo = "sha256"
+  ) %>%
+  dplyr::filter(
+    date >= "2018-11-01",
+    date <= "2018-11-30"
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(hash_rate, hash_rate_predicted)
+  ) %>%
+  dplyr::group_split(currency, algo) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        x = date,
+        y = value,
+        colour = name,
+        line_type = name
+      )
+    ) +
+       geom_rect(
+        aes(
+          xmin = as.Date("2018-11-15"), 
+          xmax = as.Date("2018-11-26"), 
+          ymin = 0, 
+          ymax = Inf
+          ),
+        colour = NA,
+        fill = "grey",
+        alpha = 0.01
+       ) +
+      geom_line() +
+      scale_colour_viridis_d() +
+      labs(
+        x = "Date",
+        y = "Hash rate (H/s)",
+        colour = .$currency %>% unique()
+      ) +
+      theme_classic() +
+      theme(
+        legend.position = "bottom"
+      )
+  )
+graph 
+```
+
+### xi, war, and liquidity with MLE
+
+```{r check fit during the hash-war xi war liquidity mle}
+graph <-
+  predict_hash(
+    model_mle_sha256_xi_war_liquidity$base_currency_algo_date, 
+    model_mle_sha256_xi_war_liquidity$parameters, 
+    model_mle_sha256_xi_war_liquidity$electricity_cost,
+    algo = "sha256"
+  ) %>%
+  dplyr::filter(
+    date >= "2018-11-01",
+    date <= "2018-11-30"
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c(hash_rate, hash_rate_predicted)
+  ) %>%
+  dplyr::group_split(currency, algo) %>%
+  purrr::map(
+    .,
+    ~ ggplot(
+      data = .,
+      aes(
+        x = date,
+        y = value,
+        colour = name,
+        line_type = name
+      )
+    ) +
+       geom_rect(
+        aes(
+          xmin = as.Date("2018-11-15"), 
+          xmax = as.Date("2018-11-26"), 
+          ymin = 0, 
+          ymax = Inf
+          ),
+        colour = NA,
+        fill = "grey",
+        alpha = 0.01
+       ) +
+      geom_line() +
+      scale_colour_viridis_d() +
+      labs(
+        x = "Date",
+        y = "Hash rate (H/s)",
+        colour = .$currency %>% unique()
+      ) +
+      theme_classic() +
+      theme(
+        legend.position = "bottom"
+      )
+  )
+graph 
+```
+
+
+## Estimated machine diffusion {.tabset}
+
+### xi and war
+
+```{r machine diffusion xi war}
+# predict diffusion
+asic_date_q <-
+  asic_date %>%
+  dplyr::left_join(model_sha256_xi_war$parameters$speed, by = "model") %>%
+  dplyr::filter(!is.na(speed)) %>%
+  dplyr::mutate(
+    t = difftime(date, release, units = "days") %>% 
+      as.integer()
+  ) %>%
+  dplyr::mutate(
+    q = fit_diffusion(t, speed),
+    hash_rate_capacity = q * hash_rate_spec
+    )
+graph <-
+  asic_date_q %>%
+  ggplot(
+    aes(
+      x = date,
+      y = q,
+      colour = model
+    )
+  ) +
+  geom_line() +
+  scale_colour_viridis_d() +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  ) +
+  geom_text(
+    data = asic_date_q %>% 
+      dplyr::filter(date == "2019-09-01") %>%
+      dplyr::filter(q > quantile(q, 0.9)),
+    vjust = -1,
+    aes(label = model)
+  )
+graph 
+
+asic_date_q_sub <-
+  asic_date_q %>%
+  dplyr::group_by(model) %>%
+  dplyr::mutate(q_max = max(q)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(q_max < quantile(q_max, 0.99))
+graph <-
+  asic_date_q_sub %>%
+  ggplot(
+    aes(
+      x = date,
+      y = q,
+      colour = model
+    )
+  ) +
+  geom_line() +
+  scale_colour_viridis_d() +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  ) + 
+  geom_text(
+    data = asic_date_q_sub %>% 
+      dplyr::filter(date == "2019-09-01") %>%
+      dplyr::filter(q > quantile(q, 0.9)),
+    vjust = -1,
+    aes(label = model)
+  )
+graph 
+```
+
+### xi, war, and liquidity
+
+```{r machine diffusion xi war liquidity}
+# predict diffusion
+asic_date_q <-
+  asic_date %>%
+  dplyr::left_join(model_sha256_xi_war_liquidity$parameters$speed, by = "model") %>%
+  dplyr::filter(!is.na(speed)) %>%
+  dplyr::mutate(
+    t = difftime(date, release, units = "days") %>% 
+      as.integer()
+  ) %>%
+  dplyr::mutate(
+    q = fit_diffusion(t, speed),
+    hash_rate_capacity = q * hash_rate_spec
+    )
+graph <-
+  asic_date_q %>%
+  ggplot(
+    aes(
+      x = date,
+      y = q,
+      colour = model
+    )
+  ) +
+  geom_line() +
+  scale_colour_viridis_d() +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  ) +
+  geom_text(
+    data = asic_date_q %>% 
+      dplyr::filter(date == "2019-09-01") %>%
+      dplyr::filter(q > quantile(q, 0.9)),
+    vjust = -1,
+    aes(label = model)
+  )
+graph 
+
+asic_date_q_sub <-
+  asic_date_q %>%
+  dplyr::group_by(model) %>%
+  dplyr::mutate(q_max = max(q)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(q_max < quantile(q_max, 0.99))
+graph <-
+  asic_date_q_sub %>%
+  ggplot(
+    aes(
+      x = date,
+      y = q,
+      colour = model
+    )
+  ) +
+  geom_line() +
+  scale_colour_viridis_d() +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  ) + 
+  geom_text(
+    data = asic_date_q_sub %>% 
+      dplyr::filter(date == "2019-09-01") %>%
+      dplyr::filter(q > quantile(q, 0.9)),
+    vjust = -1,
+    aes(label = model)
+  )
+graph 
+```
+
+### xi, war, and liquidity with MLE
+
+```{r machine diffusion xi war liquidity mle}
+# predict diffusion
+asic_date_q <-
+  asic_date %>%
+  dplyr::left_join(model_mle_sha256_xi_war_liquidity$parameters$speed, by = "model") %>%
+  dplyr::filter(!is.na(speed)) %>%
+  dplyr::mutate(
+    t = difftime(date, release, units = "days") %>% 
+      as.integer()
+  ) %>%
+  dplyr::mutate(
+    q = fit_diffusion(t, speed),
+    hash_rate_capacity = q * hash_rate_spec
+    )
+graph <-
+  asic_date_q %>%
+  ggplot(
+    aes(
+      x = date,
+      y = q,
+      colour = model
+    )
+  ) +
+  geom_line() +
+  scale_colour_viridis_d() +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  ) +
+  geom_text(
+    data = asic_date_q %>% 
+      dplyr::filter(date == "2019-09-01") %>%
+      dplyr::filter(q > quantile(q, 0.9)),
+    vjust = -1,
+    aes(label = model)
+  )
+graph 
+
+asic_date_q_sub <-
+  asic_date_q %>%
+  dplyr::group_by(model) %>%
+  dplyr::mutate(q_max = max(q)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(q_max < quantile(q_max, 0.99))
+graph <-
+  asic_date_q_sub %>%
+  ggplot(
+    aes(
+      x = date,
+      y = q,
+      colour = model
+    )
+  ) +
+  geom_line() +
+  scale_colour_viridis_d() +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  ) + 
+  geom_text(
+    data = asic_date_q_sub %>% 
+      dplyr::filter(date == "2019-09-01") %>%
+      dplyr::filter(q > quantile(q, 0.9)),
+    vjust = -1,
+    aes(label = model)
+  )
+graph 
+```
+
+
+
+
+
+
+
+
+
+
+
