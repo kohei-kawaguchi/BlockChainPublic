@@ -1,7 +1,7 @@
 
 # initialize --------------------------------------------------------------
 
-library(BlockChain)
+library(BlockChainPublic)
 library(magrittr)
 library(foreach)
 library(modelsummary)

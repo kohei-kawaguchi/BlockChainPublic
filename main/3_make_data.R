@@ -2,7 +2,7 @@
 # initialize --------------------------------------------------------------
 
 rm(list = ls())
-library(BlockChain)
+library(BlockChainPublic)
 library(foreach)
 library(magrittr)
 library(doParallel)

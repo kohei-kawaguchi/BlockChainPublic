@@ -8,7 +8,7 @@ if (length(args) > 0) {
 }
 print(setting)
 
-library(BlockChain)
+library(BlockChainPublic)
 library(codetools)
 library(magrittr)
 library(foreach)

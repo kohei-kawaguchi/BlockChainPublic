@@ -6,7 +6,7 @@ output: html_document
 ```{r setup, include=FALSE}
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
-library(BlockChain)
+library(BlockChainPublic)
 library(ggplot2)
 library(kableExtra)
 library(modelsummary)
