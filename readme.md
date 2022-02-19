@@ -7,10 +7,18 @@
   ```
   git clone git@github.com:kohei-kawaguchi/BlockChainPublic.git
   ```
-3. As you clone the git repository, double click the `BlockChainpublic.Rproj` to open it as a project in RStudio.
+3. As you clone the git repository, double click the `BlockChainpublic.Rproj` to open it as a project in RStudio. Ever code is written relative to this project root folder. By starting it as an RStudio project, you can always start with this projet root folder as the current working directory.
 4. Test whether you can clean and rebuild the project as an R package by clicking the clean and rebuild command from the build tab.
 ![Clean and Rebuild](image/build.png)
-5. If it succeeds, the build console will show the following message and you can load the library by `library(BlockChainPublic)`.
+5. If it succeeds, the build console will show the following message. You may be required to install some R packages, such as `RcppEigen` and `Rcpp`.
+![Build Message](image/build_message.png)
+6. You can load the library by `library(BlockChainPublic)` to call R functions defined in `R/` folder. C++ functions defined in `src/` folder is exported to R functions by `Rcpp`.
+7. Download `cleaned/` folder and `output/` folder from aws s3 bucket by running the following command in the terminal:
+```
+aws s3 cp s3://blockchain-kawaguchi-noda-public/cleaned cleaned --recursive
+aws s3 cp s3://blockchain-kawaguchi-noda-public/output output --recursive
+```
+
 
 ## Folder Structure
 
