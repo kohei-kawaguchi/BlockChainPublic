@@ -37,49 +37,62 @@ The files `DESCRIPTION` and `NAMESPCE` describe the meta data of this package. I
 
 ## Code Structure
 
-### Main files
+### Main Files
 
-The `main` folder contains execution files. The missing numberings are for scraping, data cleaning, and unpublished analysis. Because we do not include the raw data due to its file size, the current code is self-contained by themselves. 
+- The `main` folder contains execution files. The missing numberings are for scraping, data cleaning, and unpublished analysis. Because we do not include the raw data due to its file size, the current code is self-contained by themselves. 
 
-The file `main/3_make_data.R` combines the blockchain, reward, and exchange rate to make a currency-algo-date-level data. They are only used for the descriptive statistics and not used in the estimation and simulation.
+- The file `main/4_make_data_blockheight.R` transforms the cleaned data for the following analysis. It combines the blockchain, reward, and exchange rate to make a currency-algo-blockheight-level data. Then, it combines the currency-algo-blockheight-level data of SHA-256 currencies to make a epoch-currency-level data and save it as `output/epoch_currency_sha256.rds`. 
 
-The file `main/4_make_data_blockheight.R` transforms the cleaned data for the following analysis. It combines the blockchain, reward, and exchange rate to make a currency-algo-blockheight-level data. Then, it combines the currency-algo-blockheight-level data of SHA-256 currencies to make a epoch-currency-level data and save it as `output/epoch_currency_sha256.rds`. 
+- The file `main/5_estimate_arrival_rate_sha256.R` estimate the hash supply function using the epoch-currency-level data `output/epoch_currency_sha256.rds`. The file runs various specifications that are not used in the paper. The main specification we use is saved as `output/estimate_arrival_rate_after_bsv_local.rds`.
 
-The file `main/5_estimate_arrival_rate_sha256.R` estimate the hash supply function using the epoch-currency-level data `output/epoch_currency_sha256.rds`. The file runs various specifications that are not used in the paper. The main specification we use is saved as `output/estimate_arrival_rate_after_bsv_local.rds`.
+- The file `main/8_estimate_exogenous.R` estimate the exchange rate process and save the result as `output/rate_estimate.rds`.
 
-The file `main/8_estimate_exogenous.R` estimate the exchange rate process and save the result as `output/rate_estimate.rds`.
+- The file `main/9_1_simulate_reduced_btc_halving.R` uses the data `output/epoch_currency_sha256.rds`, the estimate of the exchange rate process `output/rate_estimate.rds`, and the estimate of the hash supply function `output/estimate_arrival_rate_after_bsv_local.rds` to simulate the minimg market after the third BTC halving. 
 
-The file `main/9_1_simulate_reduced_btc_halving.R` uses the data `output/epoch_currency_sha256.rds`, the estimate of the exchange rate process `output/rate_estimate.rds`, and the estimate of the hash supply function `output/estimate_arrival_rate_after_bsv_local.rds` to simulate the minimg market after the third BTC halving. One can change the DAA setting by changing the variable `setting`. The choice is `actual`, `original_original_cw144`, `original_original_original`, `cw144_cw144_cw_144`, `original_asert_cw144`, `original_asert_asert`, `asert_asert_asert`, `cw144_asert_asert`, `asert_asert_cw144`, and `cw144_original_original`. Except for `actual`, they represent the DAA of BTC, BCH, and BSV. The code is supposed to run batch from the command line. As one runs the code in the terminal as
-```
-Rscript main/9_1_simulate_reduced_btc_halving.R $SETTING
-```
-the `$SETTING` is passed to the file as the argument. The first few lines of `main/9_1_simulate_reduced_btc_halving.R` reads the argument and pass to `setting` as follows
-```
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) > 0) {
-  setting <- args[1]
-} else {
-  setting <- "cw144_original_original"
-}
-```
+- One can change the DAA setting by changing the variable `setting`. The choice is `actual`, `original_original_cw144`, `original_original_original`, `cw144_cw144_cw_144`, `original_asert_cw144`, `original_asert_asert`, `asert_asert_asert`, `cw144_asert_asert`, `asert_asert_cw144`, and `cw144_original_original`. Except for `actual`, they represent the DAA of BTC, BCH, and BSV. The code is supposed to run batch from the command line. As one runs the code in the terminal as follows, then the `$SETTING` is passed to the file as the argument.
 
-The files `main/9_2_simulate_reduced_bch_halving.R` and `main/9_3_simulate_reduced_bsv_halving.R` are for the simulatino after the third BCH and BSV halving. The files `main/10_1_simulate_reduced_btc_halving_96paths.R`, `main/10_2_simulate_reduced_bch_halving_96paths.R`, and `main/10_3_simulate_reduced_bsv_halving_96paths.R` run the same simulations for 96 paths.
+  ```
+  Rscript main/9_1_simulate_reduced_btc_halving.R $SETTING
+  ```
 
-### Reporting files
+- The first few lines of `main/9_1_simulate_reduced_btc_halving.R` reads the argument and pass to `setting` as follows
 
-`report/summarize_cleaned_data.Rmd` is a code book of the cleaned data. It describes the definition of each variable of each cleaned data set. 
+  ```
+  args <- commandArgs(trailingOnly = TRUE)
+  if (length(args) > 0) {
+    setting <- args[1]
+  } else {
+    setting <- "cw144_original_original"
+  }
+  ```
 
-`report/describe_data.Rmd` reports the descriptive statistics of the transformed data, and `report/analyze_sha256.Rmd` compares the time series of SHA-256 currencies' data. 
-`report/describe_exchange.Rmd` examines the distribution of the exchange rate. 
+- The files `main/9_2_simulate_reduced_bch_halving.R` and `main/9_3_simulate_reduced_bsv_halving.R` are for the simulatino after the third BCH and BSV halving. The files `main/10_1_simulate_reduced_btc_halving_96paths.R`, `main/10_2_simulate_reduced_bch_halving_96paths.R`, and `main/10_3_simulate_reduced_bsv_halving_96paths.R` run the same simulations for 96 paths.
 
-`report/describe_simulator.Rmd` checks whether the our simulator can replicate the data, especially for the difficulty adjustment. 
+### Reporting Files
 
-`report/summarize_arrival_rate_rdd.Rmd` reports the SHA-256 around the halving and run a regression discontinuity analysis, and `report/arrival_rate.Rmd` reports the estimation result of the hash supply function. 
+- `report/summarize_cleaned_data.Rmd` is a code book of the cleaned data. It describes the definition of each variable of each cleaned data set. 
 
-`report/summarize_simulate_reduced_halving.Rmd` reports the simulation results and `report/summarize_security_cost.Rmd` summarizes the simulation results from the security-cost perspective. 
+- `report/analyze_sha256.Rmd` compares the time series of SHA-256 currencies' data. 
 
+- `report/describe_exchange.Rmd` examines the distribution of the exchange rate. 
 
+- `report/describe_simulator.Rmd` checks whether the our simulator can replicate the data, especially for the difficulty adjustment. 
 
+- `report/summarize_arrival_rate_rdd.Rmd` reports the SHA-256 around the halving and run a regression discontinuity analysis, and `report/arrival_rate.Rmd` reports the estimation result of the hash supply function. 
+
+- `report/summarize_simulate_reduced_halving.Rmd` reports the simulation results.
+
+- `report/summarize_security_cost.Rmd` summarizes the simulation results from the security-cost perspective. 
+
+## Table and Figures
+
+- Table 1 and 2 are generated in `report/summarize_cleaned_data.Rmd`.
+- Figure 2 is generated in `report/analyze_sha256.Rmd`.
+- Figures 3, 4, A1, A2, A3, and A4, and Table 3, A1, and A2, are generated in `report/summarize_arrival_rate_rdd.Rmd`.
+- Table 4 is generated in `report/summarize_arrival_rate.Rmd`.
+- Table 5 is generated in `report/describe_exchange.Rmd`.
+- Figure 5, 6, and 7 are generated in `report/summarize_simulate_reduced_halving.Rmd`.
+- Table 9, 10, A4, A5, and A6, are generated in `report/summarize_security_cost.Rmd`.
 
 
 
