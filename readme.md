@@ -9,7 +9,7 @@
     git clone git@github.com:kohei-kawaguchi/BlockChainPublic.git
     ```
 
-1. As you clone the git repository, double click the `BlockChainpublic.Rproj` to open it as a project in RStudio. Ever code is written relative to this project root folder. By starting it as an RStudio project, you can always start with this projet root folder as the current working directory.
+1. As you clone the git repository, double click the `BlockChainpublic.Rproj` to open it as a project in RStudio. Every code is written relative to this project root folder. By starting it as an RStudio project, you can always start with this projet root folder as the current working directory.
 1. Test whether you can clean and rebuild the project as an R package by clicking the clean and rebuild command from the build tab.
 ![Clean and Rebuild](image/build.png)
 1. If it succeeds, the build console will show the following message. You may be required to install some R packages, such as `RcppEigen` and `Rcpp`.
@@ -70,7 +70,7 @@ The files `DESCRIPTION` and `NAMESPCE` describe the meta data of this package. I
 
 - The files `main/9_2_simulate_reduced_bch_halving.R` and `main/9_3_simulate_reduced_bsv_halving.R` are for the simulatino after the third BCH and BSV halving. The files `main/10_1_simulate_reduced_btc_halving_96paths.R`, `main/10_2_simulate_reduced_bch_halving_96paths.R`, and `main/10_3_simulate_reduced_bsv_halving_96paths.R` run the same simulations for 96 paths.
 
-- The simulation files require the anaconda distribution of python 3.9. At the beginning of the code, it calls the anaconda distribution of python using `recitulate` as follows. If the if clause is true, it setup an anaconda environment named "blockchain". If the environment is already defined, it calles it in the else clause.
+- The simulation files require the anaconda distribution of python 3.9. At the beginning of the code, it calls the anaconda distribution of python using `recitulate` as follows. If the if clause is true, it setup an anaconda environment named "blockchain". If the environment is already defined, it calls it in the else clause.
 
   ```
   if (!("blockchain" %in% reticulate::conda_list()$name)) {
