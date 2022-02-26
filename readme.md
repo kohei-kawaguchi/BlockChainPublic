@@ -1,5 +1,7 @@
 # BlockChainPublic
 
+This is a replication package for "[Security-Cost Efficiency of Competing Proof-of-Work Cryptcurrencies](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3974376)".
+
 ## Install
 
 1. Install the latest version of R, RStudio, git, and aws cli. Install C/C++ compilers. In Windows, you can install Rtools. You also need to install python by anaconda. This project uses `reticulate::use_condaenv` to call python functions from R for running some process in the simulation.
@@ -23,8 +25,6 @@
     ```
   
 ## Folder Structure
-
-This is a replication package for "[Security-Cost Efficiency of Competing Proof-of-Work Cryptcurrencies](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3974376)".
 
 The folder structure is 
 
