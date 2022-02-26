@@ -34,6 +34,7 @@ The folder structure is
 - `report`: Store reporting Rmd documents.
 - `R`: Store R function definitions.
 - `src`: Store C++ function definitions.
+- `module`: Store Python function definitions.
 
 The files `DESCRIPTION` and `NAMESPCE` describe the meta data of this package. It does not contain the raw data, because the raw data is too large. All analysis can be replicated based on the cleaned data. `image` folder stores image files for this readme document.
 
