@@ -2,13 +2,12 @@ Package: BlockChainPublic
 Type: Package
 Title: Replication code for BlockChain paper
 Version: 1.0
-Date: 2019-09-30
+Date: 2022-02-26
 Author: Kohei Kawaguchi
-Maintainer: Who to complain to <yourfault@somewhere.net>
+Maintainer: Kohei Kawaguchi <kohei.kawagucci@gmail.com>
 Description: This is a replication package for "Security-Cost Efficiency of Competing Proof-of-Work Cryptcurrencies".
-License: What license is it under?
+License: MIT License
 Imports: 
     Rcpp,
     RcppEigen
 LinkingTo: Rcpp, RcppEigen
-Config/testthat/edition: 3
