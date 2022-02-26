@@ -70,6 +70,27 @@ The files `DESCRIPTION` and `NAMESPCE` describe the meta data of this package. I
 
 - The files `main/9_2_simulate_reduced_bch_halving.R` and `main/9_3_simulate_reduced_bsv_halving.R` are for the simulatino after the third BCH and BSV halving. The files `main/10_1_simulate_reduced_btc_halving_96paths.R`, `main/10_2_simulate_reduced_bch_halving_96paths.R`, and `main/10_3_simulate_reduced_bsv_halving_96paths.R` run the same simulations for 96 paths.
 
+- The simulation files require the anaconda distribution of python 3.9. At the beginning of the code, it calls the anaconda distribution of python using `recitulate` as follows. If the if clause is true, it setup an anaconda environment named "blockchain". If the environment is already defined, it calles it in the else clause.
+
+  ```
+  if (!("blockchain" %in% reticulate::conda_list()$name)) {
+    # set up python environment and install pyblp
+    reticulate::conda_create(
+      envname = "blockchain",
+      forge = TRUE,
+      python_version = "3.9"
+    )
+  } else {
+    # load conda environment and load pyublp
+    reticulate::use_condaenv("blockchain", required = TRUE)
+    asert <- 
+      reticulate::import_from_path(
+        module = "asert",
+        path = "module"
+      )
+  }
+  ```
+
 ### Reporting Files
 
 - `report/summarize_cleaned_data.Rmd` is a code book of the cleaned data. It describes the definition of each variable of each cleaned data set. 
