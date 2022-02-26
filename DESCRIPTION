@@ -1,11 +1,11 @@
 Package: BlockChainPublic
 Type: Package
-Title: What the package does (short line)
+Title: Replication code for BlockChain paper
 Version: 1.0
 Date: 2019-09-30
-Author: Who wrote it
+Author: Kohei Kawaguchi
 Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
+Description: This is a replication package for "Security-Cost Efficiency of Competing Proof-of-Work Cryptcurrencies".
 License: What license is it under?
 Imports: 
     Rcpp,

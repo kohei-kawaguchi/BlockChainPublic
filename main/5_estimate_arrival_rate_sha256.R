@@ -7,10 +7,6 @@ library(foreach)
 library(modelsummary)
 
 # read data ---------------------------------------------------------------
-
-currency_week_hashrate <- readRDS(file = here::here("cleaned/currency_week_hashrate.rds"))
-currency_algo_date <- readRDS(file = here::here("output/currency_algo_date.rds"))
-asic_spec_top <- readRDS(file = here::here("output/asic_spec_top.rds"))
 epoch_currency <- readRDS(file = here::here("output/epoch_currency_sha256.rds"))
 
 
