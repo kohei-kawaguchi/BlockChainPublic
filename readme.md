@@ -46,19 +46,19 @@ The files `DESCRIPTION` and `NAMESPCE` describe the meta data of this package. I
 
 - The file `main/4_make_data_blockheight.R` transforms the cleaned data for the following analysis. It combines the blockchain, reward, and exchange rate to make a currency-algo-blockheight-level data. Then, it combines the currency-algo-blockheight-level data of SHA-256 currencies to make a epoch-currency-level data and save it as `output/epoch_currency_sha256.rds`. 
 
-- The file `main/5_estimate_arrival_rate_sha256.R` estimate the hash supply function using the epoch-currency-level data `output/epoch_currency_sha256.rds`. The file runs various specifications that are not used in the paper. The main specification we use is saved as `output/estimate_arrival_rate_after_bsv_local.rds`.
+- The file `main/5_estimate_arrival_rate_sha256.R` estimates the hash supply function using the epoch-currency-level data `output/epoch_currency_sha256.rds`. The file runs various specifications that are not used in the paper. The main specification we use is saved as `output/estimate_arrival_rate_after_bsv_local.rds`.
 
-- The file `main/8_estimate_exogenous.R` estimate the exchange rate process and save the result as `output/rate_estimate.rds`.
+- The file `main/8_estimate_exogenous.R` estimates the exchange rate process and saves the result as `output/rate_estimate.rds`.
 
 - The file `main/9_1_simulate_reduced_btc_halving.R` uses the data `output/epoch_currency_sha256.rds`, the estimate of the exchange rate process `output/rate_estimate.rds`, and the estimate of the hash supply function `output/estimate_arrival_rate_after_bsv_local.rds` to simulate the minimg market after the third BTC halving. 
 
-- One can change the DAA setting by changing the variable `setting`. The choice is `actual`, `original_original_cw144`, `original_original_original`, `cw144_cw144_cw_144`, `original_asert_cw144`, `original_asert_asert`, `asert_asert_asert`, `cw144_asert_asert`, `asert_asert_cw144`, and `cw144_original_original`. Except for `actual`, they represent the DAA of BTC, BCH, and BSV. The code is supposed to run batch from the command line. As one runs the code in the terminal as follows, then the `$SETTING` is passed to the file as the argument.
+- One can change the DAA setting by changing the variable `setting`. The choice is `actual`, `original_original_cw144`, `original_original_original`, `cw144_cw144_cw_144`, `original_asert_cw144`, `original_asert_asert`, `asert_asert_asert`, `cw144_asert_asert`, `asert_asert_cw144`, and `cw144_original_original`. Except for `actual`, they represent the DAAs of BTC, BCH, and BSV. The code is supposed to run batch from the command line. As one runs the code in the terminal as follows, then the `$SETTING` is passed to the file as the argument.
 
   ```
   Rscript main/9_1_simulate_reduced_btc_halving.R $SETTING
   ```
 
-- The first few lines of `main/9_1_simulate_reduced_btc_halving.R` reads the argument and pass to `setting` as follows
+- The first few lines of `main/9_1_simulate_reduced_btc_halving.R` read the argument and pass to `setting` as follows
 
   ```
   args <- commandArgs(trailingOnly = TRUE)
