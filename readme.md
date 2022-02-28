@@ -17,7 +17,7 @@ This is a replication package for "[Security-Cost Efficiency of Competing Proof-
 1. If it succeeds, the build console will show the following message. You may be required to install some R packages, such as `RcppEigen` and `Rcpp`.
 ![Build Message](image/build_message.png)
 1. You can load the library by `library(BlockChainPublic)` to call R functions defined in `R/` folder. C++ functions defined in `src/` folder is exported to R functions by `Rcpp`.
-1. Download `cleaned/` folder and `output/` folder from aws s3 bucket by running the following command in the terminal:
+1. (2/28/2022: Currently, the data is not accessible. Please wait for the update) Download `cleaned/` folder and `output/` folder from aws s3 bucket by running the following command in the terminal:
 
     ```
     aws s3 cp s3://blockchain-kawaguchi-noda-public/cleaned cleaned --recursive
@@ -52,7 +52,9 @@ The files `DESCRIPTION` and `NAMESPCE` describe the meta data of this package. I
 
 - The file `main/9_1_simulate_reduced_btc_halving.R` uses the data `output/epoch_currency_sha256.rds`, the estimate of the exchange rate process `output/rate_estimate.rds`, and the estimate of the hash supply function `output/estimate_arrival_rate_after_bsv_local.rds` to simulate the minimg market after the third BTC halving. 
 
-- One can change the DAA setting by changing the variable `setting`. The choice is `actual`, `original_original_cw144`, `original_original_original`, `cw144_cw144_cw_144`, `original_asert_cw144`, `original_asert_asert`, `asert_asert_asert`, `cw144_asert_asert`, `asert_asert_cw144`, and `cw144_original_original`. Except for `actual`, they represent the DAAs of BTC, BCH, and BSV. The code is supposed to run batch from the command line. As one runs the code in the terminal as follows, then the `$SETTING` is passed to the file as the argument.
+- One can change the DAA setting by changing the variable `setting`. The choice is `actual`, `original_original_cw144`, `original_original_original`, `cw144_cw144_cw_144`, `original_asert_cw144`, `original_asert_asert`, `asert_asert_asert`, `cw144_asert_asert`, `asert_asert_cw144`, and `cw144_original_original`. Except for `actual`, they represent the DAAs of BTC, BCH, and BSV. 
+
+- The code is supposed to run batch from the command line. As one runs the code in the terminal as follows, then the `$SETTING` is passed to the file as the argument.
 
   ```
   Rscript main/9_1_simulate_reduced_btc_halving.R $SETTING
